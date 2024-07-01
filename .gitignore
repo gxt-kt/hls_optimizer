@@ -1,0 +1,8 @@
+.apc/
+Debug/
+solution*/
+.project
+.cproject
+*.xml
+*.app
+.settings/
