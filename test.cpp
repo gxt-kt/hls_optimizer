@@ -220,11 +220,12 @@ int main() {
     problem.edge_curves_size++;
   }
 
-  problem.CalculateResidual();
+  // problem.CalculateResidual();
   // std::terminate();
-  std::cout << VAR(problem.Chi2()) << std::endl;
+  // std::cout << VAR(problem.Chi2()) << std::endl;
   // problem.MakeHessian();
   problem.Solve();
+  MATRIXDEBUG(abc.parameters);
   // CurveFittingEdge edge;
   // for (int i = 0; i < 100; i++) {
   //   edge[i].ComputeResidual();
