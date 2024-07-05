@@ -55,7 +55,7 @@
 // C[4][4]);
 
 template <typename T_a, typename T_b, typename T_c, int x, int y, int z>
-void MyMatrixMultiple(T_a A[x][y], T_a B[y][z], T_a C[x][z]) {
+void MyMatrixMultiple(T_a A[x][y], T_b B[y][z], T_c C[x][z]) {
 #pragma HLS ARRAY_RESHAPE variable = B complete dim = 1
 #pragma HLS ARRAY_RESHAPE variable = A complete dim = 2
   for (int i = 0; i < x; i++)
@@ -66,6 +66,13 @@ void MyMatrixMultiple(T_a A[x][y], T_a B[y][z], T_a C[x][z]) {
       for (int k = 0; k < y; k++) {
         C[i][j] = C[i][j] + A[i][k] * B[k][j];
       }
+    }
+}
+template <typename T_a, typename T_b, int x, int y>
+void MyMatrixMultipleNumber(T_a A[x][y], T_b val, T_a C[x][y]) {
+  for (int i = 0; i < x; i++)
+    for (int j = 0; j < y; j++) {
+      C[i][j] = A[i][j] * val;
     }
 }
 template <typename T_a, typename T_b, int x, int y>
@@ -98,6 +105,12 @@ void MyMatrixSub(T_a A[x][y], T_b B[z][w]) {
     }
   }
 }
+template <typename T_a, typename T_b, int x, int y, int index_s, int cnts>
+void MyMatrixAddNumber(T_a A[x][y], T_b val) {
+  for (int i = index_s; i < index_s + cnts; i++) {
+    A[i][i] += val;
+  }
+}
 
 template <typename T_a, int x> double MySquaredNorm(T_a A[x][1]) {
   double norm = 0.0;
@@ -106,6 +119,14 @@ template <typename T_a, int x> double MySquaredNorm(T_a A[x][1]) {
     norm += A[i][0] * A[i][0];
   }
   return norm;
+}
+template <typename T_a, typename T_res, int x>
+double MyMatrixAMax(T_a A[x][x]) {
+  T_a res = std::abs(A[0][0]);
+  for (int i = 1; i < x; i++) {
+    res = std::max(res, std::abs(A[i][i]));
+  }
+  return res;
 }
 // template <typename T_a, int x, int y>
 // void MyMatrixDebug(T_a A[x][y]) {
@@ -164,27 +185,31 @@ template <int N>
 void solve(double L[N][N], double D[N][N], double b[N][1], double x[N][1]) {
   int n = N;
   int i, j;
-  double y[N], sum;
+  double y[N][1] = {}, sum = 0;
 
   for (i = 0; i < n; i++) {
     sum = b[i][0];
     for (j = 0; j < i; j++) {
-      sum -= L[i][j] * y[j];
+      sum -= L[i][j] * y[j][0];
     }
-    y[i] = sum / L[i][i];
-    // y[i] = (sum - L[i][i] * y[i]) / L[i][i]; // 修改此行
+    y[i][0] = sum / L[i][i];
   }
 
+  // MATRIXDEBUG(y);
+
+  double z[N][1] = {};
   for (i = 0; i < n; i++) {
-    x[i][0] = y[i] / sqrt(D[i][i]);
+    z[i][0] = y[i][0] / D[i][i];
   }
+
+  // MATRIXDEBUG(z);
 
   for (i = n - 1; i >= 0; i--) {
-    sum = x[i][0];
+    sum = z[i][0];
     for (j = i + 1; j < n; j++) {
       sum -= L[j][i] * x[j][0];
     }
-    x[i][0] = sum / L[i][i];
+    x[i][0] = sum;
   }
 }
 
@@ -315,7 +340,7 @@ public:
     jacobians_0[0][0] = x_ * x_ * exp_x;
     jacobians_0[0][1] = x_ * exp_x;
     jacobians_0[0][2] = exp_x;
-    MATRIXDEBUG(jacobians_0);
+    // MATRIXDEBUG(jacobians_0);
   }
 
   double jacobians_0[1][3];
@@ -328,10 +353,6 @@ public:
 class Problem {
 public:
   Problem() {}
-  // 最大支持200条边
-  static const int max_edge_curves_size = 200;
-  int edge_curves_size = 0;
-  CurveFittingEdge edge_curves[max_edge_curves_size];
 
   void CalculateResidual() {
     for (int i = 0; i < max_edge_curves_size; i++) {
@@ -341,7 +362,8 @@ public:
     }
   }
   double Chi2() {
-    double res;
+    CalculateResidual();
+    double res = 0;
     for (int i = 0; i < max_edge_curves_size; i++) {
       // std::cout << VAR(res) << std::endl;
       if (i >= edge_curves_size)
@@ -395,38 +417,199 @@ public:
     // 输出是 delta_x_
     // delta_x_ = Hessian_.inverse() * b_;
     //
-    LdltSolve<double, double, double, 3>(hessian_, delta_x_, b_, true);
-    MATRIXDEBUG(delta_x_);
-    double h_d[3][1] = {};
-    MyMatrixMultiple<double, double, double, 3, 3, 1>(hessian_, delta_x_, h_d);
-    MATRIXDEBUG(delta_x_);
-    MATRIXDEBUG(h_d);
+    LdltSolve<double, double, double, 3>(hessian_, delta_x_, b_, false);
+    double h_dx[3][1] = {};
+    MyMatrixMultiple<double, double, double, 3, 3, 1>(hessian_, delta_x_, h_dx);
+    // MATRIXDEBUG(delta_x_);
+    // MATRIXDEBUG(h_dx);
   }
-  void UpdateStates() {}
+  void UpdateStates() {
+    // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(
+        edge_curves[0].verticies_[0].parameters, delta_x_);
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
+  }
+  void RollbackStates() {
+    // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // MATRIXDEBUG(delta_x_);
+    MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(
+        edge_curves[0].verticies_[0].parameters, delta_x_);
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // MATRIXDEBUG(delta_x_);
+    // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
+  }
+
+  /// Hessian 对角线加上或者减去  Lambda
+  void AddLambdatoHessianLM() {
+    MyMatrixAddNumber<double, double, 3, 3, 0, 3>(hessian_, currentLambda_);
+    // unsigned int size = Hessian_.cols();
+    // assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
+    // for (unsigned long i = 0; i < size; ++i) {
+    //   Hessian_(i, i) += my_type{currentLambda_};
+    // }
+  }
+  void RemoveLambdatoHessianLM() {
+    MyMatrixAddNumber<double, double, 3, 3, 0, 3>(hessian_, -currentLambda_);
+    // unsigned int size = Hessian_.cols();
+    // assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
+    // for (unsigned long i = 0; i < size; ++i) {
+    //   Hessian_(i, i) += my_type{currentLambda_};
+    // }
+  }
   void Solve(int it_cnts = 10) {
     MakeHessian();
-    SolveLinearSystem();
-    std::terminate();
-    int cnt = 0;
-    int false_cnt = 0;
+    ComputeLambdaInitLM();
     bool stop = false;
-    for (int i = 0; cnt < it_cnts; i++) {
-      // 优化退出条件1： delta_x_ 很小则退出
-      if (MySquaredNorm<double, 3>(delta_x_) <= 1e-6) {
-        std::cout << "stop!: SquaredNorm(delta_x)<=number" << std::endl;
-        stop = true;
-        break;
+    int iter = 0;
+    while (!stop && iter < it_cnts) {
+      std::cout << "iter: " << iter << " , chi= " << currentChi_
+                << " , Lambda= " << currentLambda_ << std::endl;
+      bool one_step_success{false};
+      int false_cnt = 0;
+      while (!one_step_success) { // 不断尝试 Lambda, 直到成功迭代一步
+        // 更新Hx=b为(H+uI)x=b也就是H变为H+uI
+        AddLambdatoHessianLM();
+        // 解线性方程 Hx=b
+        SolveLinearSystem();
+        // 把H+uI恢复到原来的H
+        RemoveLambdatoHessianLM();
+        // 优化退出条件1： delta_x_ 很小则退出
+        if (MySquaredNorm<double, 3>(delta_x_) <= 1e-6) {
+          std::cout << "stop!: SquaredNorm(delta_x)<=number" << std::endl;
+          stop = true;
+          break;
+        }
+        // 优化退出条件2： 尝试很多次都不行则退出
+        if (false_cnt > 10) {
+          std::cout << "stop!: false_cnt > 10" << std::endl;
+          stop = true;
+          break;
+        }
+        // 更新状态量 X = X+ delta_x
+        UpdateStates();
+        // 判断当前步是否可行以及 LM 的 lambda 怎么更新
+        bool isgood = IsGoodStepInLM();
+        std::cout << "good??:" << isgood << std::endl;
+        if (isgood) {
+          // 为下一次优化构建 hessian
+          MakeHessian();
+          false_cnt = 0;
+        } else {
+          false_cnt++;
+          // 误差没下降，回滚
+          RollbackStates();
+        }
       }
-      if (false_cnt > 10) {
-        std::cout << "stop!: false_cnt > 10" << std::endl;
+      iter++;
+      // 优化退出条件3： 残差下降满足阈值
+      if (std::sqrt(currentChi_) <= stopThresholdLM_) {
         stop = true;
-        break;
       }
-      UpdateStates();
     }
+  }
+  /// LM 算法中用于判断 Lambda 在上次迭代中是否可以，以及Lambda怎么缩放
+  bool IsGoodStepInLM() {
+    double scale = 0;
+    // scale = delta_x_.transpose() * (my_type{currentLambda_} * delta_x_ + b_);
+    double dot[1][1] = {};
+    double delta_x_transpose[1][3] = {};
+    MyMatrixTranspose<double, double, 3, 1>(delta_x_, delta_x_transpose);
+    double delta_x_lambda_[3][1] = {};
+    MyMatrixMultipleNumber<double, double, 3, 1>(delta_x_, currentLambda_,
+                                                 delta_x_lambda_);
+    MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(delta_x_lambda_, b_);
+    MyMatrixMultiple<double, double, double, 1, 3, 1>(delta_x_transpose,
+                                                      delta_x_lambda_, dot);
+    scale = dot[0][0];
+    // scale = static_cast<double>((delta_x_.transpose() *
+    //                          (my_type{currentLambda_} * delta_x_ +
+    //                          b_))(0, 0));
+    // my_type scale_tmp = delta_x_.transpose() *
+    // (my_type{currentLambda_} * delta_x_ + b_); gDebugCol3(delta_x_);
+    // gDebugCol3(currentLambda_);
+    // gDebugCol3(b_);
+    // gDebugCol3(scale);
+    // gDebugCol3(scale_tmp);
+    // gDebugCol4() << G_SPLIT_LINE;
+    // gDebugCol4(my_type{currentLambda_} * delta_x_ + b_);
+    // gDebugCol4(delta_x_.transpose());
+    // gDebugCol4(delta_x_.transpose() *
+    //            (my_type{currentLambda_} * delta_x_ + b_));
+    scale += 1e-3; // make sure it's non-zero :)
+
+    std::cout << VAR(scale) << std::endl;
+    // recompute residuals after update state
+    // 统计所有的残差
+    double tempChi = Chi2();
+    // std::cout << "tempChi:" << tempChi << " "
+    //           << "currentChi_:" << currentChi_ << std::endl;
+    std::cout << VAR(currentChi_, tempChi) << std::endl;
+    // for (auto edge : edges_) {
+    //   edge.second->ComputeResidual();
+    //   tempChi += edge.second->Chi2();
+    // }
+
+    // gDebugCol5(tempChi);
+    // gDebugCol5(currentChi_);
+
+    double rho = (currentChi_ - tempChi) / scale;
+    std::cout << VAR(rho) << std::endl;
+    // gDebugCol5(rho);
+
+    // std::terminate();
+
+    if (rho > 0 && std::isfinite(tempChi)) { // last step was good, 误差在下降
+      double alpha = 1. - std::pow((2 * rho - 1), 3);
+      alpha = std::min(alpha, 2.0 / 3.0);
+      double scaleFactor = std::max(1.0 / 3.0, alpha);
+      currentLambda_ *= scaleFactor;
+      ni_ = 2;
+      currentChi_ = tempChi;
+      return true;
+    } else {
+      currentLambda_ *= ni_;
+      ni_ *= 2;
+      return false;
+    }
+  }
+
+  double ni_ = 0;
+  double currentLambda_ = 0;
+  double currentChi_ = 0;
+  /// Levenberg
+  /// 计算LM算法的初始Lambda
+  void ComputeLambdaInitLM() {
+    ni_ = 2.;
+    currentLambda_ = -1.;
+    currentChi_ = 0.0;
+
+    // // 计算出当前的总残差
+    currentChi_ = Chi2();
+    // for (const auto& edge : edges_) {
+    //   currentChi_ += edge.second->Chi2();
+    // }
+
+    // 1. 第一步计算停止迭代条件stopThresholdLM_
+    stopThresholdLM_ = 1e-6 * currentChi_; // 迭代条件为 误差下降 1e-6 倍
+
+    // 取出H矩阵对角线的最大值
+    double maxDiagonal = 0.;
+    maxDiagonal = MyMatrixAMax<double, double, 3>(hessian_);
+    double tau = 1e-5;
+    // 2. 根据对角线最大值计算出currentLambda_
+    currentLambda_ = tau * maxDiagonal; // 给到u0的初值
   }
   double hessian_[3][3] = {};
   double b_[3][1];
   double chi2_;
   double delta_x_[3][1];
+  // 最大支持200条边
+  static const int max_edge_curves_size = 200;
+  int edge_curves_size = 0;
+  CurveFittingEdge edge_curves[max_edge_curves_size];
+  double stopThresholdLM_ = 0;
+  double current_chi2_;
 };
