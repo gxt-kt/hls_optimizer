@@ -9,3 +9,4 @@ solution*/
 *build/
 *cache/
 .idea/
+cmake-build-debug/
