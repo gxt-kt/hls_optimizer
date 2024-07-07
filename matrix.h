@@ -128,6 +128,14 @@ double MyMatrixAMax(T_a A[x][x]) {
   }
   return res;
 }
+template <typename T_a, typename T_b, int x, int y>
+void MyMatrixSet(T_a A[x][y], T_b val) {
+  for (int i = 0; i < x; i++) {
+    for (int j = 0; j < y; j++) {
+      A[i][j] = val;
+    }
+  }
+}
 // template <typename T_a, int x, int y>
 // void MyMatrixDebug(T_a A[x][y]) {
 //   std::cout << "============MyMatrixDebug============" << std::endl;
@@ -326,16 +334,16 @@ public:
     // std::cout <<
     // VAR(verticies_[0].parameters[0][0],verticies_[0].parameters[1][0],verticies_[0].parameters[2][0])
     // << std::endl;
-    residual_[0][0] = std::exp(verticies_[0].parameters[0][0] * x_ * x_ +
-                               verticies_[0].parameters[1][0] * x_ +
-                               verticies_[0].parameters[2][0]) -
+    residual_[0][0] = std::exp(verticies_[0]->parameters[0][0] * x_ * x_ +
+                               verticies_[0]->parameters[1][0] * x_ +
+                               verticies_[0]->parameters[2][0]) -
                       y_;
     // std::cout << VAR(residual_[0][0]) << std::endl;
   }
   void ComputeJacobians() {
-    double exp_x = std::exp(verticies_[0].parameters[0][0] * x_ * x_ +
-                            verticies_[0].parameters[1][0] * x_ +
-                            verticies_[0].parameters[2][0]);
+    double exp_x = std::exp(verticies_[0]->parameters[0][0] * x_ * x_ +
+                            verticies_[0]->parameters[1][0] * x_ +
+                            verticies_[0]->parameters[2][0]);
     // std::cout << VAR(exp_y) << std::endl;
     jacobians_0[0][0] = x_ * x_ * exp_x;
     jacobians_0[0][1] = x_ * exp_x;
@@ -346,7 +354,7 @@ public:
   double jacobians_0[1][3];
   // const int residual_dimension=1;
   // const int num_verticies=1;
-  VertexCurveABC verticies_[num_verticies];
+  VertexCurveABC *verticies_[num_verticies];
   const int num_verticies_ = num_verticies;
 };
 
@@ -375,6 +383,12 @@ public:
     return res;
   }
   void MakeHessian() {
+    // 需要先清空原有的hessian矩阵
+    MyMatrixSet<double, double, 3, 3>(hessian_, 0);
+    MyMatrixSet<double, double, 3, 1>(b_, 0);
+    // 清空delta_x
+    MyMatrixSet<double, double, 3, 1>(delta_x_, 0);
+    
     for (int i = 0; i < max_edge_curves_size; i++) {
       if (i >= edge_curves_size)
         continue;
@@ -382,8 +396,8 @@ public:
       edge_curves[i].ComputeJacobians();
 
       // 遍历所有顶点
-      for (int j = 0; j < edge_curves[i].num_verticies_; j++) {
-      }
+      // for (int j = 0; j < edge_curves[i].num_verticies_; j++) {
+      // }
 
       double JtW[3][1];
       double transpose[3][1];
@@ -427,7 +441,7 @@ public:
     // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(
-        edge_curves[0].verticies_[0].parameters, delta_x_);
+        edge_curves[0].verticies_[0]->parameters, delta_x_);
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
   }
@@ -436,7 +450,7 @@ public:
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // MATRIXDEBUG(delta_x_);
     MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(
-        edge_curves[0].verticies_[0].parameters, delta_x_);
+        edge_curves[0].verticies_[0]->parameters, delta_x_);
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // MATRIXDEBUG(delta_x_);
     // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
@@ -467,7 +481,7 @@ public:
     while (!stop && iter < it_cnts) {
       std::cout << "iter: " << iter << " , chi= " << currentChi_
                 << " , Lambda= " << currentLambda_ << std::endl;
-      bool one_step_success=false;
+      bool one_step_success = false;
       int false_cnt = 0;
       while (!one_step_success) { // 不断尝试 Lambda, 直到成功迭代一步
         // 更新Hx=b为(H+uI)x=b也就是H变为H+uI
@@ -477,7 +491,7 @@ public:
         // 把H+uI恢复到原来的H
         RemoveLambdatoHessianLM();
         // 优化退出条件1： delta_x_ 很小则退出
-        if (MySquaredNorm<double, 3>(delta_x_) <= 1e-6) {
+        if (MySquaredNorm<double, 3>(delta_x_) <= 1e-8) {
           std::cout << "stop!: SquaredNorm(delta_x)<=number" << std::endl;
           stop = true;
           break;
@@ -491,9 +505,9 @@ public:
         // 更新状态量 X = X+ delta_x
         UpdateStates();
         // 判断当前步是否可行以及 LM 的 lambda 怎么更新
-        bool isgood = IsGoodStepInLM();
-        std::cout << "good??:" << isgood << std::endl;
-        if (isgood) {
+        one_step_success = IsGoodStepInLM();
+        std::cout << VAR(one_step_success) << std::endl;
+        if (one_step_success) {
           // 为下一次优化构建 hessian
           MakeHessian();
           false_cnt = 0;
@@ -506,6 +520,7 @@ public:
       iter++;
       // 优化退出条件3： 残差下降满足阈值
       if (std::sqrt(currentChi_) <= stopThresholdLM_) {
+        std::cout << "std::sqrt(currentChi_) <= stopThresholdLM_" << std::endl;
         stop = true;
       }
     }

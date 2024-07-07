@@ -208,9 +208,10 @@ int main() {
 
   // 构建100条边
   for (int i = 0; i < 100; i++) {
-    problem.edge_curves[i].verticies_[0].parameters[0][0] = 0;
-    problem.edge_curves[i].verticies_[0].parameters[1][0] = 0;
-    problem.edge_curves[i].verticies_[0].parameters[2][0] = 0;
+    problem.edge_curves[i].verticies_[0]=&abc;
+    // problem.edge_curves[i].verticies_[0].parameters[0][0] = 0;
+    // problem.edge_curves[i].verticies_[0].parameters[1][0] = 0;
+    // problem.edge_curves[i].verticies_[0].parameters[2][0] = 0;
     double info[1][1];
     info[0][0] = 1;
     problem.edge_curves[i].SetInformation(info);

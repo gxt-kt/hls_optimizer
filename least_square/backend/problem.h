@@ -369,9 +369,9 @@ class Problem {
     b_ = b;
     // t_hessian_cost_;// gxt:时间貌似不重要在这里
 
-    // gDebug(H);
+    gDebug(H);
     // gDebug(Hessian_);
-    // gDebug(b);
+    gDebug(b);
     // gDebug(b_);
 
     delta_x_ = VecX::Zero(size);  // initial delta_x = 0_n;
