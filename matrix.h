@@ -36,8 +36,8 @@
 #define G_VARHELP(N, ...) G_VARHELPIMP(N __VA_OPT__(, ) __VA_ARGS__)
 
 // Usage: gDebug() << VAR(a,b) // stdout: a = ${a} , b = ${b}
-#define VAR(...) G_VARHELP(COUNT_ARGS(__VA_ARGS__) __VA_OPT__(, ) __VA_ARGS__)
-
+//#define VAR(...) G_VARHELP(COUNT_ARGS(__VA_ARGS__) __VA_OPT__(, ) __VA_ARGS__)
+#define VAR(...) ""
 // constexpr int A_D1 =  4;
 // constexpr int A_D2 =  4;
 // constexpr int B_D1 =  A_D2;
@@ -158,7 +158,8 @@ void MyMatrixDebug(T_a (&A)[x][y], std::string str = "") {
   }
   std::cout << std::string(str_out.size(), '=') << std::endl;
 }
-#define MATRIXDEBUG(m) MyMatrixDebug(m, #m)
+//#define MATRIXDEBUG(m) MyMatrixDebug(m, #m)
+#define MATRIXDEBUG(m)
 
 template <typename T_a, int N>
 void ldl(T_a A[N][N], double L[N][N], double D[N][N]) {
@@ -261,6 +262,7 @@ void LdltSolve(T_a A[N][N], T_x x[N][1], T_b b[N][1], bool log = false) {
 //		}
 //}
 //
+
 // 专门设置顶点，预先定义好
 class VertexCurveABC {
 public:
@@ -268,100 +270,106 @@ public:
   double parameters[3][1] = {{0}, {0}, {0}}; // abc
 };
 
-template <int residual_dimension, int num_verticies> class Edge {
-public:
-  explicit Edge(){};
-
-  ~Edge(){};
-
-  /// 计算残差，由子类实现
-  // virtual void ComputeResidual() = 0;
-
-  /// 计算雅可比，由子类实现
-  /// 本后端不支持自动求导，需要实现每个子类的雅可比计算方法
-  // virtual void ComputeJacobians() = 0;
-
-  //    ///计算该edge对Hession矩阵的影响，由子类实现
-  //    virtual void ComputeHessionFactor() = 0;
-
-  /// 计算平方误差，会乘以信息矩阵
-  double Chi2() {
-    //	  return 1;
-    double result[1][residual_dimension];
-    MyMatrixMultiple<double, double, double, 1, residual_dimension,
-                     residual_dimension>(residual_, information_, result);
-    double res[1][1];
-    MyMatrixMultiple<double, double, double, 1, residual_dimension, 1>(
-        result, residual_, res);
-    // std::cout << VAR(residual_[0][0]) << std::endl;
-    // std::cout << VAR(information_[0][0]) << std::endl;
-    // std::cout << VAR(res[0][0]) << std::endl;
-    return res[0][0];
-  }
-
-  void
-  SetInformation(double information[residual_dimension][residual_dimension]) {
-#pragma HLS PIPELINE
-#pragma HLS UNROLL
-    for (int i = 0; i < residual_dimension; i++) {
-      for (int j = 0; j < residual_dimension; j++) {
-        information_[i][j] = information[i][j];
-      }
-    }
-  }
-
-public:
-  //  unsigned long id_;                          // edge id
-  int ordering_id_; // edge id in problem
-  //  std::vector<std::shared_ptr<Vertex>> verticies_;  // 该边对应的顶点
-  //  double residual_;
-  double residual_[1][residual_dimension] = {0}; // 残差
-                                                 //  std::vector<MatXX>
-  //      jacobians_;  // 雅可比，每个雅可比维度是 residual x vertex[i]
-  //  MatXX information_;      // 信息矩阵
-  double information_[residual_dimension][residual_dimension] = {{0}};
-};
-
-// template <int residual_dimension, int num_verticies>
-class CurveFittingEdge : public Edge<1, 1> {
-public:
-  static const int residual_dimension = 1;
-  static const int num_verticies = 1;
-  double x_ = 0, y_ = 0;
-  void ComputeResidual() {
-    // GetResidual();
-    // residual_[0][0] = 10;
-    // std::cout <<
-    // VAR(verticies_[0].parameters[0][0],verticies_[0].parameters[1][0],verticies_[0].parameters[2][0])
-    // << std::endl;
-    residual_[0][0] = std::exp(verticies_[0]->parameters[0][0] * x_ * x_ +
-                               verticies_[0]->parameters[1][0] * x_ +
-                               verticies_[0]->parameters[2][0]) -
-                      y_;
-    // std::cout << VAR(residual_[0][0]) << std::endl;
-  }
-  void ComputeJacobians() {
-    double exp_x = std::exp(verticies_[0]->parameters[0][0] * x_ * x_ +
-                            verticies_[0]->parameters[1][0] * x_ +
-                            verticies_[0]->parameters[2][0]);
-    // std::cout << VAR(exp_y) << std::endl;
-    jacobians_0[0][0] = x_ * x_ * exp_x;
-    jacobians_0[0][1] = x_ * exp_x;
-    jacobians_0[0][2] = exp_x;
-    // MATRIXDEBUG(jacobians_0);
-  }
-
-  double jacobians_0[1][3];
-  // const int residual_dimension=1;
-  // const int num_verticies=1;
-  VertexCurveABC *verticies_[num_verticies];
-  const int num_verticies_ = num_verticies;
-};
+static VertexCurveABC verticies_[10];
 
 class Problem {
 public:
-  Problem() {}
+  template <int residual_dimension, int num_verticies> class Edge {
+  public:
+    explicit Edge() {};
 
+    ~Edge() {};
+
+    /// 计算残差，由子类实现
+    // virtual void ComputeResidual() = 0;
+
+    /// 计算雅可比，由子类实现
+    /// 本后端不支持自动求导，需要实现每个子类的雅可比计算方法
+    // virtual void ComputeJacobians() = 0;
+
+    //    ///计算该edge对Hession矩阵的影响，由子类实现
+    //    virtual void ComputeHessionFactor() = 0;
+
+    /// 计算平方误差，会乘以信息矩阵
+    double Chi2() {
+      //	  return 1;
+      double result[1][residual_dimension];
+      MyMatrixMultiple<double, double, double, 1, residual_dimension,
+                       residual_dimension>(residual_, information_, result);
+      double res[1][1];
+      MyMatrixMultiple<double, double, double, 1, residual_dimension, 1>(
+          result, residual_, res);
+      // std::cout << VAR(residual_[0][0]) << std::endl;
+      // std::cout << VAR(information_[0][0]) << std::endl;
+      // std::cout << VAR(res[0][0]) << std::endl;
+      return res[0][0];
+    }
+
+    void
+    SetInformation(double information[residual_dimension][residual_dimension]) {
+#pragma HLS PIPELINE
+      for (int i = 0; i < residual_dimension; i++) {
+        for (int j = 0; j < residual_dimension; j++) {
+          information_[i][j] = information[i][j];
+        }
+      }
+    }
+
+  public:
+    //  unsigned long id_;                          // edge id
+    int ordering_id_; // edge id in problem
+    //  std::vector<std::shared_ptr<Vertex>> verticies_;  // 该边对应的顶点
+    //  double residual_;
+    double residual_[1][residual_dimension] = {0}; // 残差
+                                                   //  std::vector<MatXX>
+    //      jacobians_;  // 雅可比，每个雅可比维度是 residual x vertex[i]
+    //  MatXX information_;      // 信息矩阵
+    double information_[residual_dimension][residual_dimension] = {{0}};
+  };
+
+  Problem() {
+    verticies_[0].parameters[0][0] = 0;
+    verticies_[0].parameters[1][0] = 0;
+    verticies_[0].parameters[2][0] = 0;
+  }
+
+  // template <int residual_dimension, int num_verticies>
+  class CurveFittingEdge : public Edge<1, 1> {
+  public:
+    static const int residual_dimension = 1;
+    static const int num_verticies = 1;
+    double x_ = 0, y_ = 0;
+    void ComputeResidual() {
+      // GetResidual();
+      // residual_[0][0] = 10;
+      // std::cout <<
+      // VAR(verticies_[0].parameters[0][0],verticies_[0].parameters[1][0],verticies_[0].parameters[2][0])
+      // << std::endl;
+      residual_[0][0] = std::exp(verticies_[0].parameters[0][0] * x_ * x_ +
+                                 verticies_[0].parameters[1][0] * x_ +
+                                 verticies_[0].parameters[2][0]) -
+                        y_;
+      // std::cout << VAR(residual_[0][0]) << std::endl;
+    }
+    void ComputeJacobians() {
+      double exp_x = std::exp(verticies_[0].parameters[0][0] * x_ * x_ +
+                              verticies_[0].parameters[1][0] * x_ +
+                              verticies_[0].parameters[2][0]);
+      // std::cout << VAR(exp_y) << std::endl;
+      jacobians_0[0][0] = x_ * x_ * exp_x;
+      jacobians_0[0][1] = x_ * exp_x;
+      jacobians_0[0][2] = exp_x;
+      // MATRIXDEBUG(jacobians_0);
+    }
+
+    double jacobians_0[1][3];
+    // const int residual_dimension=1;
+    // const int num_verticies=1;
+    // VertexCurveABC *verticies_[num_verticies];
+    const int num_verticies_ = num_verticies;
+  };
+
+public:
   void CalculateResidual() {
     for (int i = 0; i < max_edge_curves_size; i++) {
       if (i >= edge_curves_size)
@@ -388,7 +396,7 @@ public:
     MyMatrixSet<double, double, 3, 1>(b_, 0);
     // 清空delta_x
     MyMatrixSet<double, double, 3, 1>(delta_x_, 0);
-    
+
     for (int i = 0; i < max_edge_curves_size; i++) {
       if (i >= edge_curves_size)
         continue;
@@ -440,8 +448,8 @@ public:
   void UpdateStates() {
     // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
-    MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(
-        edge_curves[0].verticies_[0]->parameters, delta_x_);
+    MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(verticies_[0].parameters,
+                                                  delta_x_);
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
   }
@@ -449,8 +457,8 @@ public:
     // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // MATRIXDEBUG(delta_x_);
-    MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(
-        edge_curves[0].verticies_[0]->parameters, delta_x_);
+    MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(verticies_[0].parameters,
+                                                  delta_x_);
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // MATRIXDEBUG(delta_x_);
     // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
@@ -628,3 +636,5 @@ public:
   double stopThresholdLM_ = 0;
   double current_chi2_;
 };
+
+void MatrixMultiple(double A[100], double B[100],double C[100]);
