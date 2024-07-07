@@ -6,3 +6,6 @@ solution*/
 *.xml
 *.app
 .settings/
+*build/
+*cache/
+.idea/

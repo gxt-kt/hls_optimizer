@@ -467,7 +467,7 @@ public:
     while (!stop && iter < it_cnts) {
       std::cout << "iter: " << iter << " , chi= " << currentChi_
                 << " , Lambda= " << currentLambda_ << std::endl;
-      bool one_step_success{false};
+      bool one_step_success=false;
       int false_cnt = 0;
       while (!one_step_success) { // 不断尝试 Lambda, 直到成功迭代一步
         // 更新Hx=b为(H+uI)x=b也就是H变为H+uI
