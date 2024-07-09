@@ -36,7 +36,8 @@
 #define G_VARHELP(N, ...) G_VARHELPIMP(N __VA_OPT__(, ) __VA_ARGS__)
 
 // Usage: gDebug() << VAR(a,b) // stdout: a = ${a} , b = ${b}
-//#define VAR(...) G_VARHELP(COUNT_ARGS(__VA_ARGS__) __VA_OPT__(, ) __VA_ARGS__)
+// #define VAR(...) G_VARHELP(COUNT_ARGS(__VA_ARGS__) __VA_OPT__(, )
+// __VA_ARGS__)
 #define VAR(...) ""
 // constexpr int A_D1 =  4;
 // constexpr int A_D2 =  4;
@@ -158,7 +159,7 @@ void MyMatrixDebug(T_a (&A)[x][y], std::string str = "") {
   }
   std::cout << std::string(str_out.size(), '=') << std::endl;
 }
-//#define MATRIXDEBUG(m) MyMatrixDebug(m, #m)
+// #define MATRIXDEBUG(m) MyMatrixDebug(m, #m)
 #define MATRIXDEBUG(m)
 
 template <typename T_a, int N>
@@ -276,9 +277,9 @@ class Problem {
 public:
   template <int residual_dimension, int num_verticies> class Edge {
   public:
-    explicit Edge() {};
+    explicit Edge(){};
 
-    ~Edge() {};
+    ~Edge(){};
 
     /// 计算残差，由子类实现
     // virtual void ComputeResidual() = 0;
@@ -637,4 +638,6 @@ public:
   double current_chi2_;
 };
 
-void MatrixMultiple(double A[100], double B[100],double C[100]);
+void MatrixMultiple(unsigned int A[100], unsigned int B[100],
+                    unsigned int C[100], unsigned int A_a[100],
+                    unsigned int B_b[100]);
