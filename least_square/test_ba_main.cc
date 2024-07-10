@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
   /// 优化完成后，第一帧相机的 pose 平移（x,y,z）不再是原点 0,0,0.
   /// 说明向零空间发生了漂移。 解决办法： fix 第一帧和第二帧，固定 7 自由度。
   /// 或者加上非常大的先验值。
-  problem.TestMarginalize();
+  // problem.TestMarginalize();
 
   return 0;
 }

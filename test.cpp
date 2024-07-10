@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include <exception>
 #include <iostream>
 // #include "ap_fixed.h"
 
@@ -15,8 +16,8 @@
 // 	hls::stream<typename WideType<t_DataType, (1 <<
 // t_LogParEntries)>::t_TypeInt> l_str; 	readVec2Stream<t_DataType, 1 <<
 // t_LogParEntries>(in, 16, l_str); 	writeStream2Vec<t_DataType, 1 <<
-// t_LogParEntries>(l_str,16,out); 	for(int i=0;i<20;i++) { 		std::cout << "i=" <<
-// out[i] << std::endl;
+// t_LogParEntries>(l_str,16,out); 	for(int i=0;i<20;i++) {
+// std::cout << "i=" << out[i] << std::endl;
 // 	}
 //
 // }
@@ -196,6 +197,20 @@ double my_exp(double x) {
 }
 
 int main() {
+  {
+    MyMatrix<double, 2, 3> aa;
+    std::cout << aa << std::endl;
+    aa(0, 0) = 10;
+    aa(1, 1) = 10;
+    aa(2, 2) = 10;
+    std::cout << aa.data_[0][0] << std::endl;
+    std::cout << aa << std::endl;
+    MyMatrix<double, 3, 2> bb;
+    auto cc=aa*aa.Transpose();
+    auto dd=aa;
+
+    std::terminate();
+  }
   //	ap_int<8> a[4][4]={{0,1,2,3},{4,5,6,7},{8,9,10,11},{12,13,14,15}};
   //	ap_int<8> b[4][4]={{0,1,2,3},{4,5,6,7},{8,9,10,11},{12,13,14,15}};
   //	ap_int<16> c[4][4];
