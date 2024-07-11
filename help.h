@@ -140,7 +140,7 @@ void MyMatrixDebug(T_a (&A)[x][y], std::string str = "") {
 // #define MATRIXDEBUG(m)
 
 template <typename T_a, int N>
-void ldl(T_a A[N][N], double L[N][N], double D[N][N]) {
+void ldl(T_a A[N][N], float L[N][N], float D[N][N]) {
   int n = N;
   int i, j, k;
   double sum;
@@ -169,7 +169,7 @@ void ldl(T_a A[N][N], double L[N][N], double D[N][N]) {
 }
 
 template <int N>
-void solve(double L[N][N], double D[N][N], double b[N][1], double x[N][1]) {
+void solve(float L[N][N], float D[N][N], float b[N][1], float x[N][1]) {
   int n = N;
   int i, j;
   double y[N][1] = {}, sum = 0;
@@ -206,20 +206,20 @@ void LdltSolve(T_a A[N][N], T_x x[N][1], T_b b[N][1], bool log = false) {
   int i, j;
 
   ldl(A, L, D);
-  if (log) {
-    std::cout << __PRETTY_FUNCTION__ << "log" << std::endl;
-    T_a L_transpose[N][N] = {};
-    MyMatrixTranspose<double, double, N, N>(L, L_transpose);
-    MATRIXDEBUG(L);
-    MATRIXDEBUG(L_transpose);
-    MATRIXDEBUG(D);
-    T_a L_D[N][N] = {};
-    MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L, D, L_D);
-    T_a L_D_LT[N][N] = {};
-    MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L_D, L_transpose, L_D_LT);
-    std::cout << "L_D_LT的结果应该就是hessian矩阵" << std::endl;
-    MATRIXDEBUG(L_D_LT);
-  }
+ if (log) {
+   std::cout << __PRETTY_FUNCTION__ << "log" << std::endl;
+   T_a L_transpose[N][N] = {};
+   MyMatrixTranspose<float, float, N, N>(L, L_transpose);
+   MATRIXDEBUG(L);
+   MATRIXDEBUG(L_transpose);
+   MATRIXDEBUG(D);
+   T_a L_D[N][N] = {};
+   MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L, D, L_D);
+   T_a L_D_LT[N][N] = {};
+   MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L_D, L_transpose, L_D_LT);
+   std::cout << "L_D_LT的结果应该就是hessian矩阵" << std::endl;
+   MATRIXDEBUG(L_D_LT);
+ }
   solve(L, D, b, x);
 }
 

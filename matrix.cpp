@@ -45,16 +45,61 @@
 //		}
 //}
 
+//
+//void MatrixMultiple(double A[100], double B[100],double C[100]){
+//	#pragma HLS INTERFACE s_axilite port=return
+//	#pragma HLS INTERFACE s_axilite port=B
+//	#pragma HLS INTERFACE s_axilite port=C
+//	#pragma HLS INTERFACE s_axilite port=A
+////	#pragma HLS ARRAY_RESHAPE variable=B complete dim=1
+////	#pragma HLS ARRAY_RESHAPE variable=A complete dim=2
+////	double a = 1, b = 2, c = 1;
+////		  VertexCurveABC abc;
+////		  abc.parameters[0][0] = 0;
+////		  abc.parameters[1][0] = 0;
+////		  abc.parameters[2][0] = 0;
+//
+//	  // 构建问题
+//		  Problem problem;
+//
+//		  // 构建100条边
+//		  for (int i = 0; i < 100; i++) {
+////			verticies_[0]=&abc;
+//			// problem.edge_curves[i].verticies_[0].parameters[0][0] = 0;
+//			// problem.edge_curves[i].verticies_[0].parameters[1][0] = 0;
+//			// problem.edge_curves[i].verticies_[0].parameters[2][0] = 0;
+//			double info[1][1];
+//			info[0][0] = 1;
+//			problem.edge_curves[i].SetInformation(info);
+////			double x = i / 100.0;
+////			problem.edge_curves[i].x_ = x;
+////			problem.edge_curves[i].y_ = std::exp(a * x * x + b * x + c);
+//			problem.edge_curves[i].x_ = A[i];
+//			problem.edge_curves[i].y_ = B[i];
+//			problem.edge_curves_size++;
+//		  }
+//
+//		  	  // problem.CalculateResidual();
+//		  	  // std::terminate();
+//		  	  // std::cout << VAR(problem.Chi2()) << std::endl;
+//		  	  // problem.MakeHessian();
+//		  	  problem.Solve();
+//		  	  C[0]=verticies_[0].parameters[0][0];
+//		  	  C[1]=verticies_[0].parameters[1][0];
+//		  	  C[2]=verticies_[0].parameters[2][0];
+////		  	  MATRIXDEBUG(abc.parameters);
+//}
+
 void MatrixMultiple(unsigned int A_[100], unsigned int B_[100],
                      unsigned int C_[100], unsigned int A_a_[100],
                      unsigned int B_b_[100]) {
 #pragma HLS INTERFACE s_axilite port = return
-#pragma HLS INTERFACE s_axilite port = A
-#pragma HLS INTERFACE s_axilite port = B
-#pragma HLS INTERFACE s_axilite port = C
-#pragma HLS INTERFACE s_axilite port = A_a
-#pragma HLS INTERFACE s_axilite port = B_b
-	
+#pragma HLS INTERFACE s_axilite port = A_
+#pragma HLS INTERFACE s_axilite port = B_
+#pragma HLS INTERFACE s_axilite port = C_
+#pragma HLS INTERFACE s_axilite port = A_a_
+#pragma HLS INTERFACE s_axilite port = B_b_
+
   float A[100] = {};
   float B[100] = {};
   float C[100] = {};
@@ -62,7 +107,7 @@ void MatrixMultiple(unsigned int A_[100], unsigned int B_[100],
   float B_b[100] = {};
   memcpy(A, A_, 100 * sizeof(float));
   memcpy(B, B_, 100 * sizeof(float));
-  
+
   // 构建问题
   Problem problem;
 
@@ -72,7 +117,7 @@ void MatrixMultiple(unsigned int A_[100], unsigned int B_[100],
     // problem.edge_curves[i].verticies_[0].parameters[0][0] = 0;
     // problem.edge_curves[i].verticies_[0].parameters[1][0] = 0;
     // problem.edge_curves[i].verticies_[0].parameters[2][0] = 0;
-    double info[1][1];
+	float info[1][1];
     info[0][0] = 1;
     problem.edge_curves[i].SetInformation(info);
     //			double x = i / 100.0;
@@ -89,15 +134,15 @@ void MatrixMultiple(unsigned int A_[100], unsigned int B_[100],
   // std::cout << VAR(problem.Chi2()) << std::endl;
   // problem.MakeHessian();
   problem.Solve();
-  C[0] = verticies_[0].parameters.data_[0][0];
-  C[1] = verticies_[0].parameters.data_[1][0];
-  C[2] = verticies_[0].parameters.data_[2][0];
+  C[0] = verticies_[0].parameters(0,0);
+  C[1] = verticies_[0].parameters(1,0);
+  C[2] = verticies_[0].parameters(2,0);
   //		  	  MATRIXDEBUG(abc.parameters);
   for(int i=0;i<100;i++) {
   	A_a[i]=A[i];
   }
   for(int i=0;i<100;i++) {
-  	B_b[i]=B[i]+1;
+  	B_b[i]=B[i]+2;
   }
   memcpy(C_, C, 100 * sizeof(float));
   memcpy(A_a_, A_a, 100 * sizeof(float));
