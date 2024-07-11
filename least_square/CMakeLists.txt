@@ -9,6 +9,7 @@ include_directories(fpm)
 include_directories(backend)
 
 include_directories("/usr/local/include/")
+include_directories("/usr/include/eigen3/")
 
 include_directories(include)
 
