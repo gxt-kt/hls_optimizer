@@ -8,42 +8,74 @@
 
 #include "help.h"
 
-template <typename T = double, size_t X = 1, size_t Y = 1> class MyMatrix {
+template <typename T = double, size_t X = 1, size_t Y = 1> class Matrix {
 public:
   using type = T;
   // type **data() { return data_; }
   type &operator()(size_t i, size_t j) { return data_[i][j]; }
   const type &operator()(size_t i, size_t j) const { return data_[i][j]; }
+  type &operator[](size_t i) { return data_[i][1]; }
+  const type &operator[](size_t i) const { return data_[i][1]; }
   type data_[X][Y] = {};
 
 public:
-  operator type **() { return data_; }
-  MyMatrix<type, Y, X> Transpose() {
-    MyMatrix<type, Y, X> res;
+  Matrix<type, Y, X> Transpose() {
+    Matrix<type, Y, X> res;
     MyMatrixTranspose<type, type, X, Y>(this->data_, res.data_);
     return res;
   }
   template <typename U, size_t M, size_t N>
-  MyMatrix<T, X, N> operator*(const MyMatrix<U, M, N> &matrix) {
-    MyMatrix<T, X, N> res;
+  Matrix<T, X, N> operator*(const Matrix<U, M, N> &matrix) {
+    Matrix<T, X, N> res;
     static_assert(M == Y);
     MyMatrixMultiple<T, U, T, X, Y, N>(this->data_, matrix.data_, res.data_);
     return res;
   }
+  static Matrix<T, X, Y> Identity() {
+    static_assert(X == Y);
+    Matrix<T, X, Y> res;
+    for (int i = 0; i < X; i++) {
+      res(i, i) = 1;
+    }
+  }
+  template <typename U> Matrix<T, X, Y> operator*(U value) {
+    Matrix<T, X, Y> res;
+    for (int i = 0; i < X; i++) {
+      for (int j = 0; j < Y; j++) {
+        res(i, j) = data_[i][j] * value;
+      }
+    }
+    return res;
+  }
+  // 一定注意相加和相减都是原地操作
+  void operator+(const Matrix<T, X, Y> &matrix) {
+    MyMatrixAdd<T, T, X, Y, X, Y, 0, 0>(this->data_, matrix.data_);
+  }
+  void operator-(const Matrix<T, X, Y> &matrix) {
+    MyMatrixSub<T, T, X, Y, X, Y, 0, 0>(this->data_, matrix.data_);
+  }
+  template <typename U> void SetValue(U value) {
+    for (int i = 0; i < X; i++) {
+      for (int j = 0; j < Y; j++) {
+        data_[i][j] = value;
+      }
+    }
+  }
 
   friend std::ostream &operator<<(std::ostream &os,
-                                  const MyMatrix<T, X, Y> &matrix) {
+                                  const Matrix<T, X, Y> &matrix) {
     MATRIXDEBUG(matrix.data_);
     return os;
   }
 };
 
-template <typename T, size_t N> using Vector = MyMatrix<T, N, 1>;
+template <typename T, size_t N> using Vector = Matrix<T, N, 1>;
 
 // 专门设置顶点，预先定义好
 class VertexCurveABC {
 public:
-  double parameters[3][1] = {{0}, {0}, {0}}; // abc
+  // double parameters[3][1] = {{0}, {0}, {0}}; // abc
+  Matrix<double, 3, 1> parameters;
 };
 
 static VertexCurveABC verticies_[10];
@@ -79,16 +111,19 @@ public:
   /// 计算平方误差，会乘以信息矩阵
   double Chi2() {
     //	  return 1;
-    double result[1][residual_dimension];
-    MyMatrixMultiple<double, double, double, 1, residual_dimension,
-                     residual_dimension>(residual_, information_, result);
-    double res[1][1];
-    MyMatrixMultiple<double, double, double, 1, residual_dimension, 1>(
-        result, residual_, res);
+    // double result[1][residual_dimension];
+    Matrix<double, 1, 1> res;
+    res = residual_ * information_ * residual_;
+    // MyMatrixMultiple<double, double, double, 1, residual_dimension,
+    //                  residual_dimension>(residual_, information_, result);
+    // double res[1][1];
+    // MyMatrix<double,1,1> res;
+    // MyMatrixMultiple<double, double, double, 1, residual_dimension, 1>(
+    // result, residual_, res);
     // std::cout << VAR(residual_[0][0]) << std::endl;
     // std::cout << VAR(information_[0][0]) << std::endl;
     // std::cout << VAR(res[0][0]) << std::endl;
-    return res[0][0];
+    return res(0, 0);
   }
 
   void
@@ -96,7 +131,7 @@ public:
 #pragma HLS PIPELINE
     for (int i = 0; i < residual_dimension; i++) {
       for (int j = 0; j < residual_dimension; j++) {
-        information_[i][j] = information[i][j];
+        information_.data_[i][j] = information[i][j];
       }
     }
   }
@@ -106,11 +141,13 @@ public:
   int ordering_id_; // edge id in problem
   //  std::vector<std::shared_ptr<Vertex>> verticies_;  // 该边对应的顶点
   //  double residual_;
-  double residual_[1][residual_dimension] = {0}; // 残差
-                                                 //  std::vector<MatXX>
+  // double residual_[1][residual_dimension] = {0}; // 残差
+  Matrix<double, 1, residual_dimension> residual_; // 残差
+                                                   //  std::vector<MatXX>
   //      jacobians_;  // 雅可比，每个雅可比维度是 residual x vertex[i]
   //  MatXX information_;      // 信息矩阵
-  double information_[residual_dimension][residual_dimension] = {{0}};
+  // double information_[residual_dimension][residual_dimension] = {{0}};
+  Matrix<double, residual_dimension, residual_dimension> information_; // 残差
 };
 
 class EdgeReprojection : public Edge<2, 3> {
@@ -148,24 +185,26 @@ public:
     // std::cout <<
     // VAR(verticies_[0].parameters[0][0],verticies_[0].parameters[1][0],verticies_[0].parameters[2][0])
     // << std::endl;
-    residual_[0][0] = std::exp(verticies_[0].parameters[0][0] * x_ * x_ +
-                               verticies_[0].parameters[1][0] * x_ +
-                               verticies_[0].parameters[2][0]) -
-                      y_;
+    residual_(0,0) =
+        std::exp(verticies_[0].parameters(0,0) * x_ * x_ +
+                 verticies_[0].parameters(1,0) * x_ +
+                 verticies_[0].parameters(2,0)) -
+        y_;
     // std::cout << VAR(residual_[0][0]) << std::endl;
   }
   void ComputeJacobians() {
-    double exp_x = std::exp(verticies_[0].parameters[0][0] * x_ * x_ +
-                            verticies_[0].parameters[1][0] * x_ +
-                            verticies_[0].parameters[2][0]);
+    double exp_x = std::exp(verticies_[0].parameters(0, 0) * x_ * x_ +
+                            verticies_[0].parameters(1, 0) * x_ +
+                            verticies_[0].parameters(2, 0));
     // std::cout << VAR(exp_y) << std::endl;
-    jacobians_0[0][0] = x_ * x_ * exp_x;
-    jacobians_0[0][1] = x_ * exp_x;
-    jacobians_0[0][2] = exp_x;
+    jacobians_0(0, 0) = x_ * x_ * exp_x;
+    jacobians_0(0, 1) = x_ * exp_x;
+    jacobians_0(0, 2) = exp_x;
     // MATRIXDEBUG(jacobians_0);
   }
 
-  double jacobians_0[1][3];
+  // double jacobians_0[1][3];
+  Matrix<double, 1, 3> jacobians_0;
   // const int residual_dimension=1;
   // const int num_verticies=1;
   // VertexCurveABC *verticies_[num_verticies];
@@ -175,9 +214,10 @@ public:
 class Problem {
 public:
   Problem() {
-    verticies_[0].parameters[0][0] = 0;
-    verticies_[0].parameters[1][0] = 0;
-    verticies_[0].parameters[2][0] = 0;
+    verticies_[0].parameters.SetValue(0);
+    // verticies_[0].parameters(0,0) = 0;
+    // verticies_[0].parameters(1,0) = 0;
+    // verticies_[0].parameters.data_[2][0] = 0;
   }
 
 public:
@@ -203,10 +243,14 @@ public:
   }
   void MakeHessian() {
     // 需要先清空原有的hessian矩阵
-    MyMatrixSet<double, double, 3, 3>(hessian_, 0);
-    MyMatrixSet<double, double, 3, 1>(b_, 0);
+    // hessian_=hessian_*0;
+    hessian_.SetValue(0);
+    b_.SetValue(0);
+    delta_x_.SetValue(0);
+    // MyMatrixSet<double, double, 3, 3>(hessian_.data_, 0);
+    // MyMatrixSet<double, double, 3, 1>(b_.data_, 0);
     // 清空delta_x
-    MyMatrixSet<double, double, 3, 1>(delta_x_, 0);
+    // MyMatrixSet<double, double, 3, 1>(delta_x_.data_, 0);
 
     for (int i = 0; i < max_edge_curves_size; i++) {
       if (i >= edge_curves_size)
@@ -218,30 +262,40 @@ public:
       // for (int j = 0; j < edge_curves[i].num_verticies_; j++) {
       // }
 
-      double JtW[3][1];
-      double transpose[3][1];
-      MyMatrixTranspose<double, double, 1, 3>(edge_curves[i].jacobians_0,
-                                              transpose);
+      Matrix<double, 3, 1> JtW;
+      // double JtW[3][1];
+      // double transpose[3][1];
+      // MyMatrixTranspose<double, double, 1,
+      // 3>(edge_curves[i].jacobians_0.data_,
+      //                                         transpose);
       // MATRIXDEBUG(edge_curves[i].jacobians_0);
-      MyMatrixMultiple<double, double, double, 3, 1, 1>(
-          transpose, edge_curves[i].information_, JtW);
+      JtW =
+          edge_curves[i].jacobians_0.Transpose() * edge_curves[i].information_;
+      // MyMatrixMultiple<double, double, double, 3, 1, 1>(
+      //     transpose, edge_curves[i].information_.data_, JtW);
 
       // double jacobian_j[1][3] = jacobians[j];
-      double hessian[3][3];
-      MyMatrixMultiple<double, double, double, 3, 1, 3>(
-          JtW, edge_curves[i].jacobians_0, hessian);
-      MyMatrixAdd<double, double, 3, 3, 3, 3, 0, 0>(hessian_, hessian);
+      // double hessian[3][3];
+      Matrix<double, 3, 3> hessian = JtW * edge_curves[i].jacobians_0;
+      // MyMatrixMultiple<double, double, double, 3, 1, 3>(
+      //     JtW.data_, edge_curves[i].jacobians_0.data_, hessian);
 
-      double bb[3][1];
-      MyMatrixMultiple<double, double, double, 3, 1, 1>(
-          JtW, edge_curves[i].residual_, bb);
-      MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(b_, bb);
+      hessian_ + hessian;
+      // MyMatrixAdd<double, double, 3, 3, 3, 3, 0, 0>(hessian_.data_,
+      // hessian.data_);
+
+      // double bb[3][1];
+      Matrix<double, 3, 1> bb = JtW * edge_curves[i].residual_;
+      // MyMatrixMultiple<double, double, double, 3, 1, 1>(
+      //     JtW.data_, edge_curves[i].residual_.data_, bb);
+      // MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(b_.data_, bb);
+      b_ - bb;
       // MATRIXDEBUG(hessian_);
       // MATRIXDEBUG(edge_curves[i].residual_);
       // = jacobian_i.transpose() * edge.second->Information(); //3*1 * 1*1
     }
-    MATRIXDEBUG(hessian_);
-    MATRIXDEBUG(b_);
+    // MATRIXDEBUG(hessian_);
+    // MATRIXDEBUG(b_);
   }
   void SolveLinearSystem() {
     // TODO:
@@ -250,17 +304,22 @@ public:
     // 输出是 delta_x_
     // delta_x_ = Hessian_.inverse() * b_;
     //
-    LdltSolve<double, double, double, 3>(hessian_, delta_x_, b_, false);
-    double h_dx[3][1] = {};
-    MyMatrixMultiple<double, double, double, 3, 3, 1>(hessian_, delta_x_, h_dx);
+    LdltSolve<double, double, double, 3>(hessian_.data_, delta_x_.data_,
+                                         b_.data_, false);
+    // double h_dx[3][1] = {};
+    Matrix<double, 3, 1> h_dx = hessian_ * delta_x_;
+    // MyMatrixMultiple<double, double, double, 3, 3, 1>(hessian_.data_,
+    //                                                   delta_x_.data_, h_dx);
     // MATRIXDEBUG(delta_x_);
     // MATRIXDEBUG(h_dx);
   }
   void UpdateStates() {
     // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
-    MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(verticies_[0].parameters,
-                                                  delta_x_);
+    // MyMatrixAdd<double, double, 3, 1, 3, 1, 0,
+    // 0>(verticies_[0].parameters.data_,
+    //                                               delta_x_.data_);
+    verticies_[0].parameters + delta_x_;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
   }
@@ -268,8 +327,9 @@ public:
     // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // MATRIXDEBUG(delta_x_);
-    MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(verticies_[0].parameters,
-                                                  delta_x_);
+    // MyMatrixSub<double, double, 3, 1, 3, 1, 0, 0>(
+    //     verticies_[0].parameters.data_, delta_x_.data_);
+    verticies_[0].parameters - delta_x_;
     // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
     // MATRIXDEBUG(delta_x_);
     // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
@@ -277,7 +337,9 @@ public:
 
   /// Hessian 对角线加上或者减去  Lambda
   void AddLambdatoHessianLM() {
-    MyMatrixAddNumber<double, double, 3, 3, 0, 3>(hessian_, currentLambda_);
+    MyMatrixAddNumber<double, double, 3, 3, 0, 3>(hessian_.data_,
+                                                  currentLambda_);
+
     // unsigned int size = Hessian_.cols();
     // assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
     // for (unsigned long i = 0; i < size; ++i) {
@@ -285,7 +347,9 @@ public:
     // }
   }
   void RemoveLambdatoHessianLM() {
-    MyMatrixAddNumber<double, double, 3, 3, 0, 3>(hessian_, -currentLambda_);
+    // hessian_-hessian_.Identity()*currentLambda_;
+    MyMatrixAddNumber<double, double, 3, 3, 0, 3>(hessian_.data_,
+                                                  -currentLambda_);
     // unsigned int size = Hessian_.cols();
     // assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
     // for (unsigned long i = 0; i < size; ++i) {
@@ -310,7 +374,7 @@ public:
         // 把H+uI恢复到原来的H
         RemoveLambdatoHessianLM();
         // 优化退出条件1： delta_x_ 很小则退出
-        if (MySquaredNorm<double, 3>(delta_x_) <= 1e-8) {
+        if (MySquaredNorm<double, 3>(delta_x_.data_) <= 1e-8) {
           std::cout << "stop!: SquaredNorm(delta_x)<=number" << std::endl;
           stop = true;
           break;
@@ -348,16 +412,25 @@ public:
   bool IsGoodStepInLM() {
     double scale = 0;
     // scale = delta_x_.transpose() * (my_type{currentLambda_} * delta_x_ + b_);
-    double dot[1][1] = {};
-    double delta_x_transpose[1][3] = {};
-    MyMatrixTranspose<double, double, 3, 1>(delta_x_, delta_x_transpose);
-    double delta_x_lambda_[3][1] = {};
-    MyMatrixMultipleNumber<double, double, 3, 1>(delta_x_, currentLambda_,
-                                                 delta_x_lambda_);
-    MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(delta_x_lambda_, b_);
-    MyMatrixMultiple<double, double, double, 1, 3, 1>(delta_x_transpose,
-                                                      delta_x_lambda_, dot);
-    scale = dot[0][0];
+    Matrix<double, 1, 1> dot;
+    Matrix<double, 1, 3> delta_x_transpose;
+    // double dot[1][1] = {};
+    // double delta_x_transpose[1][3] = {};
+    MyMatrixTranspose<double, double, 3, 1>(delta_x_.data_,
+                                            delta_x_transpose.data_);
+    // double delta_x_lambda_[3][1] = {};
+    Matrix<double, 3, 1> delta_x_lambda_ = delta_x_ * currentLambda_;
+    delta_x_lambda_ + b_;
+    dot = delta_x_.Transpose() * delta_x_lambda_;
+    // MyMatrixMultipleNumber<double, double, 3, 1>(delta_x_.data_,
+    // currentLambda_,
+    //                                              delta_x_lambda_.data_);
+    // MyMatrixAdd<double, double, 3, 1, 3, 1, 0, 0>(delta_x_lambda_.data_,
+    // b_.data_); MyMatrixMultiple<double, double, double, 1, 3,
+    // 1>(delta_x_transpose.data_,
+    //                                                   delta_x_lambda_.data_,
+    //                                                   dot.data_);
+    scale = dot(0, 0);
     // scale = static_cast<double>((delta_x_.transpose() *
     //                          (my_type{currentLambda_} * delta_x_ +
     //                          b_))(0, 0));
@@ -431,15 +504,18 @@ public:
 
     // 取出H矩阵对角线的最大值
     double maxDiagonal = 0.;
-    maxDiagonal = MyMatrixAMax<double, double, 3>(hessian_);
+    maxDiagonal = MyMatrixAMax<double, double, 3>(hessian_.data_);
     double tau = 1e-5;
     // 2. 根据对角线最大值计算出currentLambda_
     currentLambda_ = tau * maxDiagonal; // 给到u0的初值
   }
-  double hessian_[3][3] = {};
-  double b_[3][1];
+  // double hessian_[3][3] = {};
+  Matrix<double, 3, 3> hessian_;
+  // double b_[3][1];
+  Matrix<double, 3, 1> b_;
   double chi2_;
-  double delta_x_[3][1];
+  // double delta_x_[3][1];
+  Matrix<double, 3, 1> delta_x_;
   // 最大支持200条边
   static const int max_edge_curves_size = 200;
   int edge_curves_size = 0;

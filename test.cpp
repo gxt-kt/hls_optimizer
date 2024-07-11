@@ -197,15 +197,15 @@ double my_exp(double x) {
 }
 
 int main() {
-  {
-    MyMatrix<double, 2, 3> aa;
+  if(0){
+    Matrix<double, 2, 3> aa;
     std::cout << aa << std::endl;
     aa(0, 0) = 10;
     aa(1, 1) = 10;
     aa(2, 2) = 10;
     std::cout << aa.data_[0][0] << std::endl;
     std::cout << aa << std::endl;
-    MyMatrix<double, 3, 2> bb;
+    Matrix<double, 3, 2> bb;
     auto cc=aa*aa.Transpose();
     auto dd=aa;
 

@@ -89,9 +89,9 @@ void MatrixMultiple(unsigned int A_[100], unsigned int B_[100],
   // std::cout << VAR(problem.Chi2()) << std::endl;
   // problem.MakeHessian();
   problem.Solve();
-  C[0] = verticies_[0].parameters[0][0];
-  C[1] = verticies_[0].parameters[1][0];
-  C[2] = verticies_[0].parameters[2][0];
+  C[0] = verticies_[0].parameters.data_[0][0];
+  C[1] = verticies_[0].parameters.data_[1][0];
+  C[2] = verticies_[0].parameters.data_[2][0];
   //		  	  MATRIXDEBUG(abc.parameters);
   for(int i=0;i<100;i++) {
   	A_a[i]=A[i];

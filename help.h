@@ -76,7 +76,7 @@ void MyMatrixTranspose(T_a A[x][y], T_a B[y][x]) {
 }
 template <typename T_a, typename T_b, int x, int y, int z, int w, int index_i,
           int index_j>
-void MyMatrixAdd(T_a A[x][y], T_b B[z][w]) {
+void MyMatrixAdd(T_a A[x][y],const T_b B[z][w]) {
   for (int i = 0; i < z; i++) {
     for (int j = 0; j < w; j++) {
       A[i + index_i][j + index_j] += B[i][j];
@@ -85,7 +85,7 @@ void MyMatrixAdd(T_a A[x][y], T_b B[z][w]) {
 }
 template <typename T_a, typename T_b, int x, int y, int z, int w, int index_i,
           int index_j>
-void MyMatrixSub(T_a A[x][y], T_b B[z][w]) {
+void MyMatrixSub(T_a A[x][y],const T_b B[z][w]) {
   for (int i = 0; i < z; i++) {
     for (int j = 0; j < w; j++) {
       A[i + index_i][j + index_j] -= B[i][j];
