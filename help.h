@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <algorithm>
 #include <cmath>
 #include <exception>
@@ -40,9 +39,8 @@
 // __VA_ARGS__)
 #define VAR(...) ""
 
-
 template <typename T_a, typename T_b, typename T_c, int x, int y, int z>
-void MyMatrixMultiple(const T_a A[x][y],const T_b B[y][z], T_c C[x][z]) {
+void MyMatrixMultiple(const T_a A[x][y], const T_b B[y][z], T_c C[x][z]) {
 #pragma HLS ARRAY_RESHAPE variable = B complete dim = 1
 #pragma HLS ARRAY_RESHAPE variable = A complete dim = 2
   for (int i = 0; i < x; i++)
@@ -76,7 +74,7 @@ void MyMatrixTranspose(T_a A[x][y], T_a B[y][x]) {
 }
 template <typename T_a, typename T_b, int x, int y, int z, int w, int index_i,
           int index_j>
-void MyMatrixAdd(T_a A[x][y],const T_b B[z][w]) {
+void MyMatrixAdd(T_a A[x][y], const T_b B[z][w]) {
   for (int i = 0; i < z; i++) {
     for (int j = 0; j < w; j++) {
       A[i + index_i][j + index_j] += B[i][j];
@@ -85,7 +83,7 @@ void MyMatrixAdd(T_a A[x][y],const T_b B[z][w]) {
 }
 template <typename T_a, typename T_b, int x, int y, int z, int w, int index_i,
           int index_j>
-void MyMatrixSub(T_a A[x][y],const T_b B[z][w]) {
+void MyMatrixSub(T_a A[x][y], const T_b B[z][w]) {
   for (int i = 0; i < z; i++) {
     for (int j = 0; j < w; j++) {
       A[i + index_i][j + index_j] -= B[i][j];
@@ -122,6 +120,17 @@ void MyMatrixSet(T_a A[x][y], T_b val) {
       A[i][j] = val;
     }
   }
+}
+
+/**
+ * 两个四元数相乘
+ */
+template <typename T_a, typename T_b, typename T_c>
+void MyQuaternionMultiple(T_a (&A)[4][1], T_b (&B)[4][1], T_c (&C)[4][1]) {
+    C[0][0] = A[3][0] * B[0][0] + A[0][0] * B[3][0] + A[1][0] * B[2][0] - A[2][0] * B[1][0];
+    C[1][0] = A[3][0] * B[1][0] - A[0][0] * B[2][0] + A[1][0] * B[3][0] + A[2][0] * B[0][0];
+    C[2][0] = A[3][0] * B[2][0] + A[0][0] * B[1][0] - A[1][0] * B[0][0] + A[2][0] * B[3][0];
+    C[3][0] = A[3][0] * B[3][0] - A[0][0] * B[0][0] - A[1][0] * B[1][0] - A[2][0] * B[2][0];
 }
 
 template <typename T_a, int x, int y>
@@ -206,20 +215,19 @@ void LdltSolve(T_a A[N][N], T_x x[N][1], T_b b[N][1], bool log = false) {
   int i, j;
 
   ldl(A, L, D);
- if (log) {
-   std::cout << __PRETTY_FUNCTION__ << "log" << std::endl;
-   T_a L_transpose[N][N] = {};
-   MyMatrixTranspose<float, float, N, N>(L, L_transpose);
-   MATRIXDEBUG(L);
-   MATRIXDEBUG(L_transpose);
-   MATRIXDEBUG(D);
-   T_a L_D[N][N] = {};
-   MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L, D, L_D);
-   T_a L_D_LT[N][N] = {};
-   MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L_D, L_transpose, L_D_LT);
-   std::cout << "L_D_LT的结果应该就是hessian矩阵" << std::endl;
-   MATRIXDEBUG(L_D_LT);
- }
+  if (log) {
+    std::cout << __PRETTY_FUNCTION__ << "log" << std::endl;
+    T_a L_transpose[N][N] = {};
+    MyMatrixTranspose<float, float, N, N>(L, L_transpose);
+    MATRIXDEBUG(L);
+    MATRIXDEBUG(L_transpose);
+    MATRIXDEBUG(D);
+    T_a L_D[N][N] = {};
+    MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L, D, L_D);
+    T_a L_D_LT[N][N] = {};
+    MyMatrixMultiple<T_a, T_a, T_a, N, N, N>(L_D, L_transpose, L_D_LT);
+    std::cout << "L_D_LT的结果应该就是hessian矩阵" << std::endl;
+    MATRIXDEBUG(L_D_LT);
+  }
   solve(L, D, b, x);
 }
-
