@@ -69,9 +69,9 @@ int main() {
 v_points[0].parameters[0]=-3.31974;
 v_points[0].parameters[1]= 3.13289;
 v_points[0].parameters[2]= 4.75876;
-v_points[0].parameters[0]= 3.73289;
-v_points[0].parameters[1]= -0.591593;
-v_points[0].parameters[2]= 6.61199;
+v_points[1].parameters[0]= 3.73289;
+v_points[1].parameters[1]= -0.591593;
+v_points[1].parameters[2]= 6.61199;
 i:2  -0.541924
   2.75942
   7.09139
