@@ -4,9 +4,7 @@
 
 class Problem {
 public:
-  Problem() {
-    verticies_[0].parameters.SetValue(0);
-  }
+  Problem() { verticies_[0].parameters.SetValue(0); }
 
 public:
   void CalculateResidual() {
@@ -43,7 +41,6 @@ public:
       edge_curves[i].ComputeResidual();
       edge_curves[i].ComputeJacobians();
 
-
       Matrix<float, 3, 1> JtW;
 
       JtW =
@@ -51,11 +48,11 @@ public:
 
       Matrix<float, 3, 3> hessian = JtW * edge_curves[i].jacobians_0;
 
-      hessian_ + hessian;
+      hessian_ = hessian_ + hessian;
 
       Matrix<float, 3, 1> bb = JtW * edge_curves[i].residual_;
 
-      b_ - bb;
+      b_ = b_ - bb;
     }
     // MATRIXDEBUG(hessian_);
     // MATRIXDEBUG(b_);
@@ -77,10 +74,10 @@ public:
     // MATRIXDEBUG(h_dx);
   }
   void UpdateStates() {
-    verticies_[0].parameters + delta_x_;
+    verticies_[0].parameters = verticies_[0].parameters + delta_x_;
   }
   void RollbackStates() {
-    verticies_[0].parameters - delta_x_;
+    verticies_[0].parameters = verticies_[0].parameters - delta_x_;
   }
 
   /// Hessian 对角线加上或者减去  Lambda

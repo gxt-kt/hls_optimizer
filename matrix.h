@@ -3,24 +3,23 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <exception>
 #include <iostream>
+#include <cstring>
 
 #include "help.h"
 
 template <typename T = float, size_t X = 1, size_t Y = 1> class Matrix {
 public:
   using type = T;
-  Matrix() {}
+  // type **data() { return data_; }
   type &operator()(size_t i, size_t j) { return data_[i][j]; }
   const type &operator()(size_t i, size_t j) const { return data_[i][j]; }
-  type &operator[](size_t i) { return data_[i][0]; }
-  const type &operator[](size_t i) const { return data_[i][0]; }
+  type &operator[](size_t i) { return data_[i][1]; } const type &operator[](size_t i) const { return data_[i][1]; }
   type data_[X][Y] = {};
 
 public:
-  Matrix<type, Y, X> transpose() {
+  Matrix<type, Y, X> Transpose() {
     Matrix<type, Y, X> res;
     MyMatrixTranspose<type, type, X, Y>(this->data_, res.data_);
     return res;
@@ -62,19 +61,6 @@ public:
       }
     }
   }
-  void normalized() {
-    for (size_t j = 0; j < Y; j++) {
-      // 小心这里norm相加会溢出
-      T norm = 0;
-      for (size_t i = 0; i < X; i++) {
-        norm += data_[i][j] * data_[i][j];
-      }
-      norm = sqrt(norm);
-      for (size_t i = 0; i < X; i++) {
-        data_[i][j] /= norm;
-      }
-    }
-  }
 
   friend std::ostream &operator<<(std::ostream &os,
                                   const Matrix<T, X, Y> &matrix) {
@@ -85,8 +71,458 @@ public:
 
 template <typename T, size_t N> using Vector = Matrix<T, N, 1>;
 
+// 专门设置顶点，预先定义好
+class VertexCurveABC {
+public:
+  // float parameters[3][1] = {{0}, {0}, {0}}; // abc
+  Matrix<float, 3, 1> parameters;
+};
 
+static VertexCurveABC verticies_[10];
 
+/**
+ * 以逆深度形式存储的顶点
+ */
+class VertexInverseDepth {
+public:
+  VertexInverseDepth() {}
+  float parameters[7][1] = {}; // xyz xyzw
+
+  void Plus(float delta[7][1]) {
+    parameters[0][0] += delta[0][0];
+    parameters[1][0] += delta[1][0];
+    parameters[2][0] += delta[2][0];
+
+    float q[4] = {};
+    float dq[4] = {};
+    dq[0] = delta[3][0] / 2;
+    dq[1] = delta[4][0] / 2;
+    dq[2] = delta[5][0] / 2;
+    dq[3] = 1;
+  }
+};
+
+template <int residual_dimension, int num_verticies> class Edge {
+public:
+  explicit Edge(){};
+
+  ~Edge(){};
+
+  /// 计算平方误差，会乘以信息矩阵
+  float Chi2() {
+    //	  return 1;
+    // float result[1][residual_dimension];
+    Matrix<float, 1, 1> res;
+    res = residual_ * information_ * residual_;
+    // MyMatrixMultiple<float, float, float, 1, residual_dimension,
+    //                  residual_dimension>(residual_, information_, result);
+    // float res[1][1];
+    // MyMatrix<float,1,1> res;
+    // MyMatrixMultiple<float, float, float, 1, residual_dimension, 1>(
+    // result, residual_, res);
+    // std::cout << VAR(residual_[0][0]) << std::endl;
+    // std::cout << VAR(information_[0][0]) << std::endl;
+    // std::cout << VAR(res[0][0]) << std::endl;
+    return res(0, 0);
+  }
+
+  void
+  SetInformation(float information[residual_dimension][residual_dimension]) {
+#pragma HLS PIPELINE
+    for (int i = 0; i < residual_dimension; i++) {
+      for (int j = 0; j < residual_dimension; j++) {
+        information_.data_[i][j] = information[i][j];
+      }
+    }
+  }
+
+public:
+  //  unsigned long id_;                          // edge id
+  int ordering_id_; // edge id in problem
+  //  std::vector<std::shared_ptr<Vertex>> verticies_;  // 该边对应的顶点
+  //  float residual_;
+  // float residual_[1][residual_dimension] = {0}; // 残差
+  Matrix<float, 1, residual_dimension> residual_; // 残差
+                                                   //  std::vector<MatXX>
+  //      jacobians_;  // 雅可比，每个雅可比维度是 residual x vertex[i]
+  //  MatXX information_;      // 信息矩阵
+  // float information_[residual_dimension][residual_dimension] = {{0}};
+  Matrix<float, residual_dimension, residual_dimension> information_; // 残差
+};
+
+class EdgeReprojection : public Edge<2, 3> {
+  static const int residual_dimension = 2;
+  static const int num_verticies = 3;
+
+  // 需要知道当前边对应的顶点
+  // 第一个顶点是逆深度
+  size_t inver_depth_idx = 0;
+  // 第二三个顶点分别是i和j的位姿
+  size_t pose_i_idx = 0;
+  size_t pose_j_idx = 0;
+
+  float pts_i_[3][1] = {};
+  float pts_j_[3][1] = {};
+
+  void ComputeResidual() {}
+  void ComputeJacobians() {}
+
+  // 总共三个雅可比
+  float jacobians_0[1][3];
+  float jacobians_1[1][3];
+  float jacobians_2[1][3];
+};
+
+// template <int residual_dimension, int num_verticies>
+class CurveFittingEdge : public Edge<1, 1> {
+public:
+  static const int residual_dimension = 1;
+  static const int num_verticies = 1;
+  float x_ = 0, y_ = 0;
+  void ComputeResidual() {
+    // GetResidual();
+    // residual_[0][0] = 10;
+    // std::cout <<
+    // VAR(verticies_[0].parameters[0][0],verticies_[0].parameters[1][0],verticies_[0].parameters[2][0])
+    // << std::endl;
+    residual_(0,0) =
+        std::exp(verticies_[0].parameters(0,0) * x_ * x_ +
+                 verticies_[0].parameters(1,0) * x_ +
+                 verticies_[0].parameters(2,0)) -
+        y_;
+    // std::cout << VAR(residual_[0][0]) << std::endl;
+  }
+  void ComputeJacobians() {
+    float exp_x = std::exp(verticies_[0].parameters(0, 0) * x_ * x_ +
+                            verticies_[0].parameters(1, 0) * x_ +
+                            verticies_[0].parameters(2, 0));
+    // std::cout << VAR(exp_y) << std::endl;
+    jacobians_0(0, 0) = x_ * x_ * exp_x;
+    jacobians_0(0, 1) = x_ * exp_x;
+    jacobians_0(0, 2) = exp_x;
+    // MATRIXDEBUG(jacobians_0);
+  }
+
+  // float jacobians_0[1][3];
+  Matrix<float, 1, 3> jacobians_0;
+  // const int residual_dimension=1;
+  // const int num_verticies=1;
+  // VertexCurveABC *verticies_[num_verticies];
+  const int num_verticies_ = num_verticies;
+};
+
+class Problem {
+public:
+  Problem() {
+    verticies_[0].parameters.SetValue(0);
+    // verticies_[0].parameters(0,0) = 0;
+    // verticies_[0].parameters(1,0) = 0;
+    // verticies_[0].parameters.data_[2][0] = 0;
+  }
+
+public:
+  void CalculateResidual() {
+    for (int i = 0; i < max_edge_curves_size; i++) {
+      if (i >= edge_curves_size)
+        continue;
+      edge_curves[i].ComputeResidual();
+    }
+  }
+  float Chi2() {
+    CalculateResidual();
+    float res = 0;
+    for (int i = 0; i < max_edge_curves_size; i++) {
+      // std::cout << VAR(res) << std::endl;
+      if (i >= edge_curves_size)
+        continue;
+      res += edge_curves[i].Chi2();
+      // res += edge_curves[i].Chi2();
+      // std::cout << VAR(res) << std::endl;
+    }
+    return res;
+  }
+  void MakeHessian() {
+    // 需要先清空原有的hessian矩阵
+    // hessian_=hessian_*0;
+    hessian_.SetValue(0);
+    b_.SetValue(0);
+    delta_x_.SetValue(0);
+    // MyMatrixSet<float, float, 3, 3>(hessian_.data_, 0);
+    // MyMatrixSet<float, float, 3, 1>(b_.data_, 0);
+    // 清空delta_x
+    // MyMatrixSet<float, float, 3, 1>(delta_x_.data_, 0);
+
+    for (int i = 0; i < max_edge_curves_size; i++) {
+      if (i >= edge_curves_size)
+        continue;
+      edge_curves[i].ComputeResidual();
+      edge_curves[i].ComputeJacobians();
+
+      // 遍历所有顶点
+      // for (int j = 0; j < edge_curves[i].num_verticies_; j++) {
+      // }
+
+      Matrix<float, 3, 1> JtW;
+      // float JtW[3][1];
+      // float transpose[3][1];
+      // MyMatrixTranspose<float, float, 1,
+      // 3>(edge_curves[i].jacobians_0.data_,
+      //                                         transpose);
+      // MATRIXDEBUG(edge_curves[i].jacobians_0);
+      JtW =
+          edge_curves[i].jacobians_0.Transpose() * edge_curves[i].information_;
+      // MyMatrixMultiple<float, float, float, 3, 1, 1>(
+      //     transpose, edge_curves[i].information_.data_, JtW);
+
+      // float jacobian_j[1][3] = jacobians[j];
+      // float hessian[3][3];
+      Matrix<float, 3, 3> hessian = JtW * edge_curves[i].jacobians_0;
+      // MyMatrixMultiple<float, float, float, 3, 1, 3>(
+      //     JtW.data_, edge_curves[i].jacobians_0.data_, hessian);
+
+      hessian_ + hessian;
+      // MyMatrixAdd<float, float, 3, 3, 3, 3, 0, 0>(hessian_.data_,
+      // hessian.data_);
+
+      // float bb[3][1];
+      Matrix<float, 3, 1> bb = JtW * edge_curves[i].residual_;
+      // MyMatrixMultiple<float, float, float, 3, 1, 1>(
+      //     JtW.data_, edge_curves[i].residual_.data_, bb);
+      // MyMatrixSub<float, float, 3, 1, 3, 1, 0, 0>(b_.data_, bb);
+      b_ - bb;
+      // MATRIXDEBUG(hessian_);
+      // MATRIXDEBUG(edge_curves[i].residual_);
+      // = jacobian_i.transpose() * edge.second->Information(); //3*1 * 1*1
+    }
+    // MATRIXDEBUG(hessian_);
+    // MATRIXDEBUG(b_);
+  }
+  void SolveLinearSystem() {
+    // TODO:
+    // 在这里我们假设已经求解完成了
+    // 输入是hessian_ 和 b_
+    // 输出是 delta_x_
+    // delta_x_ = Hessian_.inverse() * b_;
+    //
+    LdltSolve<float, float, float, 3>(hessian_.data_, delta_x_.data_,
+                                         b_.data_, false);
+    // float h_dx[3][1] = {};
+    Matrix<float, 3, 1> h_dx = hessian_ * delta_x_;
+    // MyMatrixMultiple<float, float, float, 3, 3, 1>(hessian_.data_,
+    //                                                   delta_x_.data_, h_dx);
+    // MATRIXDEBUG(delta_x_);
+    // MATRIXDEBUG(h_dx);
+  }
+  void UpdateStates() {
+    // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // MyMatrixAdd<float, float, 3, 1, 3, 1, 0,
+    // 0>(verticies_[0].parameters.data_,
+    //                                               delta_x_.data_);
+    verticies_[0].parameters + delta_x_;
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
+  }
+  void RollbackStates() {
+    // std::cout << __PRETTY_FUNCTION__ << "begin" << std::endl;
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // MATRIXDEBUG(delta_x_);
+    // MyMatrixSub<float, float, 3, 1, 3, 1, 0, 0>(
+    //     verticies_[0].parameters.data_, delta_x_.data_);
+    verticies_[0].parameters - delta_x_;
+    // MATRIXDEBUG(edge_curves[0].verticies_[0].parameters);
+    // MATRIXDEBUG(delta_x_);
+    // std::cout << __PRETTY_FUNCTION__ << "end" << std::endl;
+  }
+
+  /// Hessian 对角线加上或者减去  Lambda
+  void AddLambdatoHessianLM() {
+    MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_,
+                                                  currentLambda_);
+
+    // unsigned int size = Hessian_.cols();
+    // assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
+    // for (unsigned long i = 0; i < size; ++i) {
+    //   Hessian_(i, i) += my_type{currentLambda_};
+    // }
+  }
+  void RemoveLambdatoHessianLM() {
+    // hessian_-hessian_.Identity()*currentLambda_;
+    MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_,
+                                                  -currentLambda_);
+    // unsigned int size = Hessian_.cols();
+    // assert(Hessian_.rows() == Hessian_.cols() && "Hessian is not square");
+    // for (unsigned long i = 0; i < size; ++i) {
+    //   Hessian_(i, i) += my_type{currentLambda_};
+    // }
+  }
+  void Solve(int it_cnts = 10) {
+    MakeHessian();
+    ComputeLambdaInitLM();
+    bool stop = false;
+    int iter = 0;
+    while (!stop && iter < it_cnts) {
+      std::cout << "iter: " << iter << " , chi= " << currentChi_
+                << " , Lambda= " << currentLambda_ << std::endl;
+      bool one_step_success = false;
+      int false_cnt = 0;
+      while (!one_step_success) { // 不断尝试 Lambda, 直到成功迭代一步
+        // 更新Hx=b为(H+uI)x=b也就是H变为H+uI
+        AddLambdatoHessianLM();
+        // 解线性方程 Hx=b
+        SolveLinearSystem();
+        // 把H+uI恢复到原来的H
+        RemoveLambdatoHessianLM();
+        // 优化退出条件1： delta_x_ 很小则退出
+        if (MySquaredNorm<float, 3>(delta_x_.data_) <= 1e-8) {
+          std::cout << "stop!: SquaredNorm(delta_x)<=number" << std::endl;
+          stop = true;
+          break;
+        }
+        // 优化退出条件2： 尝试很多次都不行则退出
+        if (false_cnt > 10) {
+          std::cout << "stop!: false_cnt > 10" << std::endl;
+          stop = true;
+          break;
+        }
+        // 更新状态量 X = X+ delta_x
+        UpdateStates();
+        // 判断当前步是否可行以及 LM 的 lambda 怎么更新
+        one_step_success = IsGoodStepInLM();
+        std::cout << VAR(one_step_success) << std::endl;
+        if (one_step_success) {
+          // 为下一次优化构建 hessian
+          MakeHessian();
+          false_cnt = 0;
+        } else {
+          false_cnt++;
+          // 误差没下降，回滚
+          RollbackStates();
+        }
+      }
+      iter++;
+      // 优化退出条件3： 残差下降满足阈值
+      if (std::sqrt(currentChi_) <= stopThresholdLM_) {
+        std::cout << "std::sqrt(currentChi_) <= stopThresholdLM_" << std::endl;
+        stop = true;
+      }
+    }
+  }
+  /// LM 算法中用于判断 Lambda 在上次迭代中是否可以，以及Lambda怎么缩放
+  bool IsGoodStepInLM() {
+    float scale = 0;
+    // scale = delta_x_.transpose() * (my_type{currentLambda_} * delta_x_ + b_);
+    Matrix<float, 1, 1> dot;
+    Matrix<float, 1, 3> delta_x_transpose;
+    // float dot[1][1] = {};
+    // float delta_x_transpose[1][3] = {};
+    MyMatrixTranspose<float, float, 3, 1>(delta_x_.data_,
+                                            delta_x_transpose.data_);
+    // float delta_x_lambda_[3][1] = {};
+    Matrix<float, 3, 1> delta_x_lambda_ = delta_x_ * currentLambda_;
+    delta_x_lambda_ + b_;
+    dot = delta_x_.Transpose() * delta_x_lambda_;
+    // MyMatrixMultipleNumber<float, float, 3, 1>(delta_x_.data_,
+    // currentLambda_,
+    //                                              delta_x_lambda_.data_);
+    // MyMatrixAdd<float, float, 3, 1, 3, 1, 0, 0>(delta_x_lambda_.data_,
+    // b_.data_); MyMatrixMultiple<float, float, float, 1, 3,
+    // 1>(delta_x_transpose.data_,
+    //                                                   delta_x_lambda_.data_,
+    //                                                   dot.data_);
+    scale = dot(0, 0);
+    // scale = static_cast<float>((delta_x_.transpose() *
+    //                          (my_type{currentLambda_} * delta_x_ +
+    //                          b_))(0, 0));
+    // my_type scale_tmp = delta_x_.transpose() *
+    // (my_type{currentLambda_} * delta_x_ + b_); gDebugCol3(delta_x_);
+    // gDebugCol3(currentLambda_);
+    // gDebugCol3(b_);
+    // gDebugCol3(scale);
+    // gDebugCol3(scale_tmp);
+    // gDebugCol4() << G_SPLIT_LINE;
+    // gDebugCol4(my_type{currentLambda_} * delta_x_ + b_);
+    // gDebugCol4(delta_x_.transpose());
+    // gDebugCol4(delta_x_.transpose() *
+    //            (my_type{currentLambda_} * delta_x_ + b_));
+    scale += 1e-3; // make sure it's non-zero :)
+
+    std::cout << VAR(scale) << std::endl;
+    // recompute residuals after update state
+    // 统计所有的残差
+    float tempChi = Chi2();
+    // std::cout << "tempChi:" << tempChi << " "
+    //           << "currentChi_:" << currentChi_ << std::endl;
+    std::cout << VAR(currentChi_, tempChi) << std::endl;
+    // for (auto edge : edges_) {
+    //   edge.second->ComputeResidual();
+    //   tempChi += edge.second->Chi2();
+    // }
+
+    // gDebugCol5(tempChi);
+    // gDebugCol5(currentChi_);
+
+    float rho = (currentChi_ - tempChi) / scale;
+    std::cout << VAR(rho) << std::endl;
+    // gDebugCol5(rho);
+
+    // std::terminate();
+
+    if (rho > 0 && std::isfinite(tempChi)) { // last step was good, 误差在下降
+      float alpha = 1. - std::pow((2 * rho - 1), 3);
+      alpha = std::min(alpha, float(2.0 / 3.0));
+      float scaleFactor = std::max(float(1.0 / 3.0), alpha);
+      currentLambda_ *= scaleFactor;
+      ni_ = 2;
+      currentChi_ = tempChi;
+      return true;
+    } else {
+      currentLambda_ *= ni_;
+      ni_ *= 2;
+      return false;
+    }
+  }
+
+  float ni_ = 0;
+  float currentLambda_ = 0;
+  float currentChi_ = 0;
+  /// Levenberg
+  /// 计算LM算法的初始Lambda
+  void ComputeLambdaInitLM() {
+    ni_ = 2.;
+    currentLambda_ = -1.;
+    currentChi_ = 0.0;
+
+    // // 计算出当前的总残差
+    currentChi_ = Chi2();
+    // for (const auto& edge : edges_) {
+    //   currentChi_ += edge.second->Chi2();
+    // }
+
+    // 1. 第一步计算停止迭代条件stopThresholdLM_
+    stopThresholdLM_ = 1e-6 * currentChi_; // 迭代条件为 误差下降 1e-6 倍
+
+    // 取出H矩阵对角线的最大值
+    float maxDiagonal = 0.;
+    maxDiagonal = MyMatrixAMax<float, float, 3>(hessian_.data_);
+    float tau = 1e-5;
+    // 2. 根据对角线最大值计算出currentLambda_
+    currentLambda_ = tau * maxDiagonal; // 给到u0的初值
+  }
+  // float hessian_[3][3] = {};
+  Matrix<float, 3, 3> hessian_;
+  // float b_[3][1];
+  Matrix<float, 3, 1> b_;
+  float chi2_;
+  // float delta_x_[3][1];
+  Matrix<float, 3, 1> delta_x_;
+  // 最大支持200条边
+  static const int max_edge_curves_size = 200;
+  int edge_curves_size = 0;
+  CurveFittingEdge edge_curves[max_edge_curves_size];
+  float stopThresholdLM_ = 0;
+  float current_chi2_;
+};
 
 void MatrixMultiple(unsigned int A[100], unsigned int B[100],
                     unsigned int C[100], unsigned int A_a[100],
