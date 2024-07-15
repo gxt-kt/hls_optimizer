@@ -123,7 +123,14 @@ void MyMatrixSet(T_a A[x][y], T_b val) {
 }
 
 /**
- * 两个四元数相乘
+ * @brief 两个四元数相乘 
+ *
+ * @tparam T_a 数据类型
+ * @tparam T_b 数据类型 
+ * @tparam T_c 数据类型
+ * @param A @input xyzw
+ * @param B @input xyzw
+ * @param C @output xyzw
  */
 template <typename T_a, typename T_b, typename T_c>
 void MyQuaternionMultiple(T_a (&A)[4][1], T_b (&B)[4][1], T_c (&C)[4][1]) {
@@ -134,7 +141,15 @@ void MyQuaternionMultiple(T_a (&A)[4][1], T_b (&B)[4][1], T_c (&C)[4][1]) {
 }
 
 
-// 四元数乘以三维向量的函数
+/**
+ * @brief 四元数乘以三维向量的函数 
+ *
+ * @tparam T_q q type 
+ * @tparam T_t t type
+ * @param q wxyz
+ * @param v xyz
+ * @param result xyz 
+ */
 template <typename T_q, typename T_t>
 inline void QuaternionMultiply(const T_q q[4][1],const T_t v[3][1], T_t result[3][1]) {
     double w = q[0][0];

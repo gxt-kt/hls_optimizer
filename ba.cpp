@@ -47,6 +47,7 @@ int main() {
     // std::terminate();
   }
 
+  // 位姿总共三个顶点，添加完成
   v_poses[0].parameters[0] = 0;
   v_poses[0].parameters[1] = 0;
   v_poses[0].parameters[2] = 0;
@@ -71,6 +72,7 @@ int main() {
   v_poses[2].parameters[5] = 0.5;
   v_poses[2].parameters[6] = 0.866025;
 
+  // 特征点
   v_points[0].parameters[0] = -3.31974;
   v_points[0].parameters[1] = 3.13289;
   v_points[0].parameters[2] = 4.75876;

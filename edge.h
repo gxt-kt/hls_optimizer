@@ -85,6 +85,10 @@ public:
 
 class EdgeReprojection : public Edge<2, 3> {
   static const int residual_dimension = 2;
+  // 三个顶点分别是：
+  // 1. 特征点的逆深度
+  // 2. 特阵点在第0帧相机的投影
+  // 3. 特阵点在第k帧相机的投影
   static const int num_verticies = 3;
 
   // 需要知道当前边对应的顶点
@@ -95,6 +99,9 @@ class EdgeReprojection : public Edge<2, 3> {
   // 第二三个顶点分别是i和j的位姿
   size_t pose_idx1 = 0;
   size_t pose_idx2 = 0;
+
+
+  EdgeReprojection() {}
 
   void ComputeResidual() {
     float inv_dep_i = v_points[pose_idx0].parameters[0];
