@@ -5,10 +5,6 @@
 
 VertexCurveABC verticies_[10];
 
-VertexInverseDepth v_points[30];
-
-VertexPose v_poses[5];
-
 void MatrixMultiple(unsigned int A_[100], unsigned int B_[100],
                     unsigned int C_[100], unsigned int A_a_[100],
                     unsigned int B_b_[100]) {

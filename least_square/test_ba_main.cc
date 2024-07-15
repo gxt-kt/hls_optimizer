@@ -192,7 +192,9 @@ int main(int argc, char *argv[]) {
   }
   std::cout << "cout points" << std::endl;
   for(int i=0;i<points.size();i++) {
-    std::cout << "i:" << i << "  " <<  points[i] << std::endl;
+    std::cout << "v_points[" << i << "].parameters[0]=" <<  points[i].x() <<";" << std::endl;
+    std::cout << "v_points[" << i << "].parameters[1]=" <<  points[i].y() <<";" << std::endl;
+    std::cout << "v_points[" << i << "].parameters[2]=" <<  points[i].z() <<";" << std::endl;
   }
   Eigen::Quaternion<my_type> qic(my_type{1}, my_type{0}, my_type{0},
                                  my_type{0});

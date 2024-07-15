@@ -91,8 +91,8 @@ public:
   }
   void normalized() {
     for (size_t j = 0; j < Y; j++) {
-      // 小心这里norm相加会溢出
-      T norm = 0;
+      // NOTE: 小心这里norm相加会溢出
+      float norm = 0;
       for (size_t i = 0; i < X; i++) {
         norm += data_[i][j] * data_[i][j];
       }
@@ -153,6 +153,7 @@ public:
     inv.w() = w() * inv_norm;
     return inv;
   }
+  // eigen3中也是按照wxyz存储的
   T_q &x() { return (*this)[1]; }
   T_q &y() { return (*this)[2]; }
   T_q &z() { return (*this)[3]; }
