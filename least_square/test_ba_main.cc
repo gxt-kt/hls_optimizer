@@ -181,6 +181,19 @@ int main(int argc, char *argv[]) {
   std::vector<Frame> cameras;
   std::vector<Vec3> points;
   GetSimDataInWordFrame(cameras, points);
+
+  std::cout << "cout cameras twc" << std::endl;
+  for(int i=0;i<cameras.size();i++) {
+    std::cout << cameras[i].twc << std::endl;
+  }
+  std::cout << "cout cameras qwc" << std::endl;
+  for(int i=0;i<cameras.size();i++) {
+    std::cout << cameras[i].qwc << std::endl;
+  }
+  std::cout << "cout points" << std::endl;
+  for(int i=0;i<points.size();i++) {
+    std::cout << "i:" << i << "  " <<  points[i] << std::endl;
+  }
   Eigen::Quaternion<my_type> qic(my_type{1}, my_type{0}, my_type{0},
                                  my_type{0});
   Vec3 tic(my_type{0}, my_type{0}, my_type{0});
