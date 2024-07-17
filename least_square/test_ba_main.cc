@@ -242,10 +242,17 @@ int main(int argc, char *argv[]) {
     problem.AddVertex(verterxPoint);
     allPoints.push_back(verterxPoint);
 
+    static int e_idx=0;
     // 每个特征对应的投影误差, 第 0 帧为起始帧
     for (size_t j = 1; j < cameras.size(); ++j) {
       Vec3 pt_i = cameras[0].featurePerId.find(i)->second;
       Vec3 pt_j = cameras[j].featurePerId.find(i)->second;
+      printf("e_reproject[%d].pts_i_[%d]=%f;\n",e_idx,0,pt_i[0]);
+      printf("e_reproject[%d].pts_i_[%d]=%f;\n",e_idx,1,pt_i[1]);
+      printf("e_reproject[%d].pts_i_[%d]=%f;\n",e_idx,2,pt_i[2]);
+      printf("e_reproject[%d].pts_j_[%d]=%f;\n",e_idx,0,pt_j[0]);
+      printf("e_reproject[%d].pts_j_[%d]=%f;\n",e_idx,1,pt_j[1]);
+      printf("e_reproject[%d].pts_j_[%d]=%f;\n",e_idx,2,pt_j[2]);
       std::shared_ptr<EdgeReprojection> edge(new EdgeReprojection(pt_i, pt_j));
       edge->SetTranslationImuFromCamera(qic, tic);
 
@@ -253,10 +260,14 @@ int main(int argc, char *argv[]) {
       edge_vertex.push_back(verterxPoint);
       edge_vertex.push_back(vertexCams_vec[0]);
       edge_vertex.push_back(vertexCams_vec[j]);
+      printf("e_reproject[%d].v_idx0=%d;\n",e_idx,i);
+      printf("e_reproject[%d].v_idx1=%d;\n",e_idx,0);
+      printf("e_reproject[%d].v_idx2=%d;\n",e_idx,j);
       edge->SetVertex(edge_vertex);
 
       problem.AddEdge(edge);
     }
+    e_idx++;
   }
 
   gDebug() << "begin";
@@ -279,6 +290,16 @@ int main(int argc, char *argv[]) {
   /// 说明向零空间发生了漂移。 解决办法： fix 第一帧和第二帧，固定 7 自由度。
   /// 或者加上非常大的先验值。
   // problem.TestMarginalize();
+
+  Qd a;
+  a.x()=0.1;
+  a.y()=0.2;
+  a.z()=0.3;
+  a.w()=std::sqrt(1-0.01-0.04-0.09);
+  gDebug(a);
+  gDebug(a.inverse());
+  gDebug(a.toRotationMatrix());
+
 
   return 0;
 }

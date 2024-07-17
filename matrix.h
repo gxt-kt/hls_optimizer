@@ -16,6 +16,7 @@ public:
   type &operator()(size_t i, size_t j) { return data_[i][j]; }
   const type &operator()(size_t i, size_t j) const { return data_[i][j]; }
   type &operator[](size_t i) { return data_[i][0]; }
+  type &operator()(size_t i) { return data_[i][0]; }
   const type &operator[](size_t i) const { return data_[i][0]; }
   type data_[X][Y] = {};
 
@@ -56,6 +57,33 @@ public:
       }
     }
     return res;
+  }
+  template <size_t N> void SetleftCols(const Matrix<T, X, N> &matrix) {
+    for (int i = 0; i < X; i++) {
+      for (int j = 0; j < N; j++) {
+        (*this)(i, j) = matrix(i, j);
+      }
+    }
+  }
+  template <size_t N> void SetrightCols(const Matrix<T, X, N> &matrix) {
+    static_assert(N >= 0 && Y >= N);
+    for (int i = 0; i < X; i++) {
+      for (int j = Y - N; j < Y; j++) {
+        (*this)(i, j) = matrix(i, j);
+      }
+    }
+  }
+
+  Matrix<T, 3, 3> hat() {
+    static_assert(X == 3 && Y == 1);
+    Matrix<T, 3, 1> &omega = *this;
+    Matrix<T, 3, 3> Omega;
+    // clang-format off
+      Omega << 0.0, -omega(2), omega(1),
+               omega(2), 0.0, -omega(0),
+              -omega(1), omega(0), 0.0;
+    // clang-format on
+    return Omega;
   }
   // // 一定注意相加和相减都是原地操作
   // void operator+(const Matrix<T, X, Y> &matrix) {
@@ -137,6 +165,27 @@ public:
     Matrix<T_t, 3, 1> res;
     QuaternionMultiply<T_q, T_t>(this->data_, t.data_, res.data_);
     return res;
+  }
+  Matrix<T_q, 3, 3> toRotationMatrix() {
+    T_q q0 = w();
+    T_q q1 = x();
+    T_q q2 = y();
+    T_q q3 = z();
+
+    Matrix<T_q, 3, 3> R;
+    R(0, 0) = q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3;
+    R(0, 1) = 2 * (q1 * q2 - q0 * q3);
+    R(0, 2) = 2 * (q1 * q3 + q0 * q2);
+
+    R(1, 0) = 2 * (q1 * q2 + q0 * q3);
+    R(1, 1) = q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3;
+    R(1, 2) = 2 * (q2 * q3 - q0 * q1);
+
+    R(2, 0) = 2 * (q1 * q3 - q0 * q2);
+    R(2, 1) = 2 * (q2 * q3 + q0 * q1);
+    R(2, 2) = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+
+    return R;
   }
   Quaternion<T_q> inverse() {
     T_q norm = x() * x() + y() * y() + z() * z() + w() * w();

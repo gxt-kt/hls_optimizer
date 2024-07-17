@@ -9,6 +9,9 @@ extern VertexInverseDepth v_points[];
 
 extern VertexPose v_poses[];
 
+class EdgeReprojection;
+extern EdgeReprojection e_reproject[];
+
 template <int residual_dimension, int num_verticies> class Edge {
 public:
   explicit Edge(){};
@@ -18,7 +21,7 @@ public:
   /// 计算平方误差，会乘以信息矩阵
   float Chi2() {
     Matrix<float, 1, 1> res;
-    res = residual_ * information_ * residual_;
+    res = residual_.transpose() * information_ * residual_;
     return res(0, 0);
   }
 
@@ -84,6 +87,7 @@ public:
 };
 
 class EdgeReprojection : public Edge<2, 3> {
+public:
   static const int residual_dimension = 2;
   // 三个顶点分别是：
   // 1. 特征点的逆深度
@@ -95,38 +99,31 @@ class EdgeReprojection : public Edge<2, 3> {
   // 第一个顶点是逆深度
   size_t inver_depth_idx = 0;
   // 第0个顶点是逆深度
-  size_t pose_idx0 = 0;
+  size_t v_idx0 = 0;
   // 第二三个顶点分别是i和j的位姿
-  size_t pose_idx1 = 0;
-  size_t pose_idx2 = 0;
-
+  size_t v_idx1 = 0;
+  size_t v_idx2 = 0;
 
   EdgeReprojection() {}
 
   void ComputeResidual() {
-    float inv_dep_i = v_points[pose_idx0].parameters[0];
+    float inv_dep_i = v_points[v_idx0].parameters[0];
 
-    auto param_i = v_poses[pose_idx1].parameters;
+    auto param_i = v_poses[v_idx1].parameters;
     Quaternion<float> Qi;
     Qi[0] = param_i[6];
     Qi[1] = param_i[3];
     Qi[2] = param_i[4];
     Qi[3] = param_i[5];
-    Matrix<float, 3, 1> Pi;
-    Pi[0] = param_i[0];
-    Pi[1] = param_i[1];
-    Pi[2] = param_i[2];
+    Matrix<float, 3, 1> Pi = param_i.head<3>();
 
-    auto param_j = v_poses[pose_idx2].parameters;
+    auto param_j = v_poses[v_idx2].parameters;
     Quaternion<float> Qj;
     Qj[0] = param_i[6];
     Qj[1] = param_i[3];
     Qj[2] = param_i[4];
     Qj[3] = param_i[5];
-    Matrix<float, 3, 1> Pj;
-    Pi[0] = param_j[0];
-    Pi[1] = param_j[1];
-    Pi[2] = param_j[2];
+    Matrix<float, 3, 1> Pj = param_j.head<3>();
 
     auto pts_camera_i = pts_i_ / inv_dep_i;
     auto pts_imu_i = qic * pts_camera_i + tic;
@@ -143,7 +140,72 @@ class EdgeReprojection : public Edge<2, 3> {
     qic = qic_;
     tic = tic_;
   }
-  void ComputeJacobians() {}
+  void ComputeJacobians() {
+    float inv_dep_i = v_points[v_idx0].parameters[0];
+
+    auto param_i = v_poses[v_idx1].parameters;
+    Quaternion<float> Qi;
+    Qi[0] = param_i[6];
+    Qi[1] = param_i[3];
+    Qi[2] = param_i[4];
+    Qi[3] = param_i[5];
+    Matrix<float, 3, 1> Pi = param_i.head<3>();
+
+    auto param_j = v_poses[v_idx2].parameters;
+    Quaternion<float> Qj;
+    Qj[0] = param_i[6];
+    Qj[1] = param_i[3];
+    Qj[2] = param_i[4];
+    Qj[3] = param_i[5];
+    Matrix<float, 3, 1> Pj = param_j.head<3>();
+
+    auto pts_camera_i = pts_i_ / inv_dep_i;
+    auto pts_imu_i = qic * pts_camera_i + tic;
+    // gxt:
+    auto pts_imu_i_double = pts_imu_i;
+    auto pts_w = Qi * pts_imu_i + Pi;
+    auto pts_imu_j = Qj.inverse() * (pts_w - Pj);
+    // gxt:
+    auto pts_imu_j_double = pts_imu_j;
+    auto pts_camera_j = qic.inverse() * (pts_imu_j - tic);
+    //
+    auto dep_j = pts_camera_j.z();
+    //
+    auto Ri = Qi.toRotationMatrix();
+    auto Rj = Qj.toRotationMatrix();
+    auto ric = qic.toRotationMatrix();
+    Matrix<float, 2, 3> reduce;
+    // // gDebugWarn() << G_FILE_LINE;
+    reduce(0, 0) = 1. / dep_j;
+    reduce(0, 1) = 0;
+    reduce(0, 2) = -pts_camera_j(0) / (dep_j * dep_j);
+    reduce(1, 0) = 0;
+    reduce(1, 1) = 1. / dep_j;
+    reduce(1, 2) = -pts_camera_j(1) / (dep_j * dep_j);
+    // // gDebugWarn() << G_FILE_LINE;
+    // reduce = information_ * reduce;
+    //
+    Matrix<float, 2, 6> jacobian_pose_i;
+    Matrix<float, 3, 6> jaco_i;
+    jaco_i.SetleftCols(ric.transpose() * Rj.transpose());
+    jaco_i.SetrightCols<3>(ric.transpose() * Rj.transpose() * Ri * (-1) *
+                           pts_imu_i_double.hat());
+    jacobian_pose_i.SetleftCols<6>(reduce * jaco_i);
+    //
+    Matrix<float, 2, 6> jacobian_pose_j;
+    Matrix<float, 3, 6> jaco_j;
+    jaco_j.SetleftCols<3>(ric.transpose() * (-1) * Rj.transpose());
+    jaco_j.SetrightCols<3>(ric.transpose() * pts_imu_j_double.hat());
+    jacobian_pose_j.SetleftCols<6>(reduce * jaco_j);
+
+    Matrix<float, 2, 1> jacobian_feature;
+    jacobian_feature = reduce * ric.transpose() * Rj.transpose() * Ri * ric *
+                       pts_i_ * -1.0 / (inv_dep_i * inv_dep_i);
+    //
+    jacobians_0 = jacobian_feature;
+    jacobians_1 = jacobian_pose_i;
+    jacobians_2 = jacobian_pose_j;
+  }
 
   Matrix<float, 3, 1> pts_i_;
   Matrix<float, 3, 1> pts_j_;
@@ -152,7 +214,7 @@ class EdgeReprojection : public Edge<2, 3> {
   Matrix<float, 3, 1> tic;
 
   // 总共三个雅可比
-  Matrix<float, 1, 3> jacobians_0;
-  Matrix<float, 1, 3> jacobians_1;
-  Matrix<float, 1, 3> jacobians_2;
+  Matrix<float, 2, 1> jacobians_0;
+  Matrix<float, 2, 6> jacobians_1;
+  Matrix<float, 2, 6> jacobians_2;
 };
