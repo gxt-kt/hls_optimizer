@@ -10,3 +10,4 @@ solution*/
 *cache/
 .idea/
 cmake-build-debug/
+*.txt
