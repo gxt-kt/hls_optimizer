@@ -26,14 +26,14 @@ int main() {
     tmp.parameters[4] = 0.2;
     tmp.parameters[5] = 0.3;
     tmp.parameters[6] = sqrt(1 - (0.01 + 0.04 + 0.09));
-    Matrix<float, 7, 1> delta;
+    Matrix<float, 6, 1> delta;
     delta[0] = 1;
     delta[1] = 2;
     delta[2] = 3;
     delta[3] = 0.1;
     delta[4] = 0.2;
     delta[5] = 0.1;
-    delta[6] = sqrt(1 - (0.01 + 0.04 + 0.01));
+    // delta[6] = sqrt(1 - (0.01 + 0.04 + 0.01));
     tmp.Plus(delta);
     std::cout << tmp.parameters << std::endl;
     // std::terminate();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "edge.h"
+#include <exception>
 
 class Problem {
 public:
@@ -67,7 +68,7 @@ public:
     LdltSolve<float, float, float, 3>(hessian_.data_, delta_x_.data_, b_.data_,
                                       false);
     // float h_dx[3][1] = {};
-    Matrix<float, 3, 1> h_dx = hessian_ * delta_x_;
+    // Matrix<float, 3, 1> h_dx = hessian_ * delta_x_;
     // MyMatrixMultiple<float, float, float, 3, 3, 1>(hessian_.data_,
     //                                                   delta_x_.data_, h_dx);
     // MATRIXDEBUG(delta_x_);
@@ -221,8 +222,18 @@ public:
   float current_chi2_;
 };
 
-
-const int dimen=3*6+1*20;
+const int dimen = 3 * 6 + 1 * 20;
+/**
+ * @brief 获取逆深度的对应hessian的id索引
+ */
+inline int GetIndexInerse(int id) { return 18 + id; }
+/**
+ * @brief 获取位姿的对应hessian的id索引
+ *
+ * @param id
+ * @return
+ */
+inline int GetIndexPose(int id) { return id * 6; }
 class BAProblem {
 public:
   // BAProblem() { }
@@ -260,6 +271,11 @@ public:
     for (int i = 0; i < max_edge_reproject_size; i++) {
       if (i >= edge_reproject_size)
         continue;
+      //     std::cout << "=============" << std::endl;
+      //     std::cout << "=============" << std::endl;
+      // std::cout << "iiii" << i << std::endl;
+      //     std::cout << "=============" << std::endl;
+      //     std::cout << "=============" << std::endl;
       e_reproject[i].ComputeResidual();
       // std::cout << "residual i=" << i << " "
       //           << e_reproject[i].residual_.transpose() << std::endl;
@@ -271,20 +287,103 @@ public:
       // std::cout << "jacobians2 i=" << i << " " << e_reproject[i].jacobians_2
       //           << std::endl;
 
-      // Matrix<float, 3, 1> JtW;
-      //
-      // JtW =
-      //     e_reproject[i].jacobians_0.transpose() *
-      //     e_reproject[i].information_;
-      //
-      // Matrix<float, 3, 3> hessian = JtW * e_reproject[i].jacobians_0;
-      //
-      // hessian_ = hessian_ + hessian;
-      //
-      // Matrix<float, 3, 1> bb = JtW * edge_curves[i].residual_;
-      //
-      // b_ = b_ - bb;
+      // 确定顶点顺序：
+      // 先3个位姿 3x6
+      // 再20个逆深度 20x1
+
+      // 首先每条边关联的顶点的个数等于雅可比的个数
+      // 1. 遍历所有顶点，获取对应的雅可比，每两个顶点两两计算
+      { // 计算顶点(0，0)
+        const auto &jacobian_i = e_reproject[i].jacobians_0;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexInerse(e_reproject[i].v_idx0);
+        const auto &jacobian_j = e_reproject[i].jacobians_0;
+        auto hessian = JtW * jacobian_j;
+        int index_j = GetIndexInerse(e_reproject[i].v_idx0);
+        hessian_.AddMatrix(hessian, index_i, index_j);
+        // std::cout << VAR(hessian) << std::endl;
+      }
+      // std::cout << VAR("0,0",hessian_) << std::endl;
+      { // 计算顶点(0，1)
+        const auto &jacobian_i = e_reproject[i].jacobians_0;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexInerse(e_reproject[i].v_idx0);
+        const auto &jacobian_j = e_reproject[i].jacobians_1;
+        auto hessian = JtW * jacobian_j;
+        int index_j = GetIndexPose(e_reproject[i].v_idx1);
+        hessian_.AddMatrix(hessian, index_i, index_j);
+        hessian_.AddMatrix(hessian.transpose(), index_j, index_i);
+        // std::cout << VAR(hessian) << std::endl;
+      }
+      // std::cout << VAR("0,1",hessian_) << std::endl;
+      { // 计算顶点(0，2)
+        const auto &jacobian_i = e_reproject[i].jacobians_0;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexInerse(e_reproject[i].v_idx0);
+        const auto &jacobian_j = e_reproject[i].jacobians_2;
+        auto hessian = JtW * jacobian_j;
+        int index_j = GetIndexPose(e_reproject[i].v_idx2);
+        hessian_.AddMatrix(hessian, index_i, index_j);
+        hessian_.AddMatrix(hessian.transpose(), index_j, index_i);
+        // std::cout << VAR(hessian) << std::endl;
+      }
+      // std::cout << VAR("0,2",hessian_) << std::endl;
+      {
+        const auto &jacobian_i = e_reproject[i].jacobians_0;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexInerse(e_reproject[i].v_idx0);
+        b_.AddMatrix(JtW * e_reproject[i].residual_ * (-1), index_i, 0);
+      }
+      { // 计算顶点(1，1)
+        const auto &jacobian_i = e_reproject[i].jacobians_1;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexPose(e_reproject[i].v_idx1);
+        const auto &jacobian_j = e_reproject[i].jacobians_1;
+        auto hessian = JtW * jacobian_j;
+        int index_j = GetIndexPose(e_reproject[i].v_idx1);
+        hessian_.AddMatrix(hessian, index_i, index_j);
+        // std::cout << VAR(hessian) << std::endl;
+      }
+      // std::cout << VAR("1,1",hessian_) << std::endl;
+      { // 计算顶点(1，2)
+        const auto &jacobian_i = e_reproject[i].jacobians_1;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexPose(e_reproject[i].v_idx1);
+        const auto &jacobian_j = e_reproject[i].jacobians_2;
+        auto hessian = JtW * jacobian_j;
+        int index_j = GetIndexPose(e_reproject[i].v_idx2);
+        hessian_.AddMatrix(hessian, index_i, index_j);
+        hessian_.AddMatrix(hessian.transpose(), index_j, index_i);
+        // std::cout << VAR(hessian) << std::endl;
+      }
+      // std::cout << VAR("1,2",hessian_) << std::endl;
+      {
+        const auto &jacobian_i = e_reproject[i].jacobians_1;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexPose(e_reproject[i].v_idx1);
+        b_.AddMatrix(JtW * e_reproject[i].residual_ * (-1), index_i, 0);
+      }
+      { // 计算顶点(2，2)
+        const auto &jacobian_i = e_reproject[i].jacobians_2;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexPose(e_reproject[i].v_idx2);
+        const auto &jacobian_j = e_reproject[i].jacobians_2;
+        auto hessian = JtW * jacobian_j;
+        int index_j = GetIndexPose(e_reproject[i].v_idx2);
+        hessian_.AddMatrix(hessian, index_i, index_j);
+        // std::cout << VAR(hessian) << std::endl;
+      }
+      // std::cout << VAR("2,2",hessian_) << std::endl;
+      {
+        const auto &jacobian_i = e_reproject[i].jacobians_2;
+        auto JtW = jacobian_i.transpose() * e_reproject[i].information_;
+        int index_i = GetIndexPose(e_reproject[i].v_idx2);
+        b_.AddMatrix(JtW * e_reproject[i].residual_ * (-1), index_i, 0);
+      }
     }
+    // std::cout << VAR(hessian_) << std::endl;
+    // std::cout << VAR(b_) << std::endl;
+    // std::terminate();
     // MATRIXDEBUG(hessian_);
     // MATRIXDEBUG(b_);
   }
@@ -295,10 +394,13 @@ public:
     // 输出是 delta_x_
     // delta_x_ = Hessian_.inverse() * b_;
     //
-    // LdltSolve<float, float, float, 3>(hessian_.data_, delta_x_.data_, b_.data_,
+    // LdltSolve<float, float, float, 3>(hessian_.data_, delta_x_.data_,
+    // b_.data_,
     //                                   false);
     // float h_dx[3][1] = {};
-    auto h_dx = hessian_ * delta_x_;
+    LdltSolve<float, float, float, dimen>(hessian_.data_, delta_x_.data_,
+                                          b_.data_, false);
+    // auto h_dx = hessian_ * delta_x_;
     // MyMatrixMultiple<float, float, float, 3, 3, 1>(hessian_.data_,
     //                                                   delta_x_.data_, h_dx);
     // MATRIXDEBUG(delta_x_);
@@ -306,14 +408,27 @@ public:
   }
   void UpdateStates() {
     // verticies_[0].parameters = verticies_[0].parameters + delta_x_;
+    for (int i = 0; i < 3; i++) {
+      v_poses[i].Plus(delta_x_.segment<6>(6 * i));
+    }
+    for (int i = 0; i < 20; i++) {
+      v_points[i].Plus(delta_x_.segment<1>(18 + 1 * i));
+    }
   }
   void RollbackStates() {
+    for (int i = 0; i < 3; i++) {
+      v_poses[i].Plus(delta_x_.segment<6>(6 * i) * (-1));
+    }
+    for (int i = 0; i < 20; i++) {
+      v_points[i].Plus(delta_x_.segment<1>(18 + 1 * i) * (-1));
+    }
     // verticies_[0].parameters = verticies_[0].parameters - delta_x_;
   }
 
   /// Hessian 对角线加上或者减去  Lambda
   void AddLambdatoHessianLM() {
-    // MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_, currentLambda_);
+    // MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_,
+    // currentLambda_);
     hessian_.AddDiagonal(currentLambda_);
   }
   void RemoveLambdatoHessianLM() {

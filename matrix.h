@@ -21,7 +21,7 @@ public:
   type data_[X][Y] = {};
 
 public:
-  Matrix<type, Y, X> transpose() {
+  Matrix<type, Y, X> transpose() const {
     Matrix<type, Y, X> res;
     MyMatrixTranspose<type, type, X, Y>(this->data_, res.data_);
     return res;
@@ -39,6 +39,7 @@ public:
     for (int i = 0; i < X; i++) {
       res(i, i) = 1;
     }
+    return res;
   }
   template <typename U> Matrix<T, X, Y> operator*(U value) {
     Matrix<T, X, Y> res;
@@ -79,9 +80,26 @@ public:
       }
     }
   }
+  template <typename U, size_t X1, size_t Y1>
+  void AddMatrix(const Matrix<U, X1, Y1> &matrix, size_t index_i,
+                 size_t index_j) {
+    for (int i = 0; i < X1; i++) {
+      for (int j = 0; j < Y1; j++) {
+        (*this)(index_i + i, index_j + j) += matrix(i, j);
+      }
+    }
+  }
   T MaxDiagonal() {
     static_assert(X == Y);
     auto res = MyMatrixAMax<T, T, X>(this->data_);
+    return res;
+  }
+  template <size_t N> Matrix<T, N, 1> segment(size_t start) {
+    static_assert(Y == 1);
+    Matrix<T, N, 1> res;
+    for (int i = 0; i < N; i++) {
+      res(i, 0) = (*this)(start + i, 0);
+    }
     return res;
   }
 

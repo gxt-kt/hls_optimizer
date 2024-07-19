@@ -60,7 +60,7 @@ void MyMatrixMultipleNumber(T_a A[x][y], T_b val, T_a C[x][y]) {
     }
 }
 template <typename T_a, typename T_b, int x, int y>
-void MyMatrixTranspose(T_a A[x][y], T_a B[y][x]) {
+void MyMatrixTranspose(const T_a A[x][y], T_a B[y][x]) {
 // #pragma HLS ARRAY_RESHAPE variable = A complete dim = 2
 // #pragma HLS ARRAY_RESHAPE variable = B complete dim = 2
 #pragma HLS PIPELINE II = 1

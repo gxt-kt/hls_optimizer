@@ -97,8 +97,6 @@ public:
 
   // 需要知道当前边对应的顶点
   // 第一个顶点是逆深度
-  size_t inver_depth_idx = 0;
-  // 第0个顶点是逆深度
   size_t v_idx0 = 0;
   // 第二三个顶点分别是i和j的位姿
   size_t v_idx1 = 0;

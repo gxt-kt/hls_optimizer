@@ -10,7 +10,7 @@
 #include "vertex.h"
 
 class Problem {
- public:
+public:
   /**
    * 问题的类型
    * SLAM问题还是通用的问题
@@ -58,7 +58,7 @@ class Problem {
 
     edges_.insert({edge->Id(), edge});
 
-    for (auto& vertex : edge->Verticies()) {
+    for (auto &vertex : edge->Verticies()) {
       vertexToEdge_.insert({vertex->Id(), edge});
     }
     return true;
@@ -103,7 +103,7 @@ class Problem {
                    << " , Lambda= " << currentLambda_;
       bool one_step_success{false};
       int false_cnt = 0;
-      while (!one_step_success) {  // 不断尝试 Lambda, 直到成功迭代一步
+      while (!one_step_success) { // 不断尝试 Lambda, 直到成功迭代一步
         // 更新Hx=b为(H+uI)x=b也就是H变为H+uI
         AddLambdatoHessianLM();
 
@@ -142,7 +142,7 @@ class Problem {
           false_cnt = 0;
         } else {
           false_cnt++;
-          RollbackStates();  // 误差没下降，回滚
+          RollbackStates(); // 误差没下降，回滚
         }
       }
       iter++;
@@ -156,17 +156,17 @@ class Problem {
   }
 
   /// 边缘化一个frame和以它为host的landmark
-  bool Marginalize(
-      std::shared_ptr<Vertex> frameVertex,
-      const std::vector<std::shared_ptr<Vertex>>& landmarkVerticies);
+  bool
+  Marginalize(std::shared_ptr<Vertex> frameVertex,
+              const std::vector<std::shared_ptr<Vertex>> &landmarkVerticies);
 
   bool Marginalize(const std::shared_ptr<Vertex> frameVertex);
 
   void TestMarginalize() {
     // Add marg test
-    int idx = 1;           // marg 中间那个变量
-    int dim = 1;           // marg 变量的维度
-    int reserve_size = 3;  // 总共变量的维度
+    int idx = 1;          // marg 中间那个变量
+    int dim = 1;          // marg 变量的维度
+    int reserve_size = 3; // 总共变量的维度
     double delta1 = 0.1 * 0.1;
     double delta2 = 0.2 * 0.2;
     double delta3 = 0.3 * 0.3;
@@ -207,7 +207,7 @@ class Problem {
     /// 开始 marg ： schur
     double eps = 1e-8;
     int m2 = dim;
-    int n2 = reserve_size - dim;  // 剩余变量的维度
+    int n2 = reserve_size - dim; // 剩余变量的维度
     // Eigen::MatrixXd Amm = my_type{0.5} * (H_marg.block(n2, n2, m2, m2) +
     //                              H_marg.block(n2, n2, m2, m2).transpose());
     MatXX Amm = my_type{0.5} * (H_marg.block(n2, n2, m2, m2) +
@@ -215,15 +215,16 @@ class Problem {
 
     // Eigen::SelfAdjointEigenSolver<MatXX> saes;
     // MatXX Amm_inv;
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic>> saes(Amm.cast<double>());
-    Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> Amm_inv_double = saes.eigenvectors() *
-                    Eigen::VectorXd((saes.eigenvalues().array() > eps)
-                             .select(saes.eigenvalues().array().inverse(),
-                             0))
-                        .asDiagonal() *
-                    saes.eigenvectors().transpose();
-    MatXX Amm_inv=Amm_inv_double.cast<my_type>();
-
+    Eigen::SelfAdjointEigenSolver<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>
+        saes(Amm.cast<double>());
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Amm_inv_double =
+        saes.eigenvectors() *
+        Eigen::VectorXd((saes.eigenvalues().array() > eps)
+                            .select(saes.eigenvalues().array().inverse(), 0))
+            .asDiagonal() *
+        saes.eigenvectors().transpose();
+    MatXX Amm_inv = Amm_inv_double.cast<my_type>();
 
     // TODO:: home work. 完成舒尔补操作
     // Eigen::MatrixXd Arm = H_marg.block(?,?,?,?);
@@ -244,7 +245,7 @@ class Problem {
   // test compute prior
   void TestComputePrior();
 
- private:
+private:
   /// Solve的实现，解通用问题
   bool SolveGenericProblem(int iterations);
 
@@ -271,13 +272,13 @@ class Problem {
       }
 
       if (problem_type_ ==
-          ProblemType::SLAM_PROBLEM)  // 如果是 slam 问题，还要分别统计 pose 和
-                                      // landmark 的维数，后面会对他们进行排序
+          ProblemType::SLAM_PROBLEM) // 如果是 slam 问题，还要分别统计 pose 和
+                                     // landmark 的维数，后面会对他们进行排序
       {
         AddOrderingSLAM(vertex.second);
-      } else if(problem_type_ ==
-          ProblemType::GENERIC_PROBLEM) {
-        vertex.second->SetOrderingId(ordering_generic_-vertex.second->LocalDimension());
+      } else if (problem_type_ == ProblemType::GENERIC_PROBLEM) {
+        vertex.second->SetOrderingId(ordering_generic_ -
+                                     vertex.second->LocalDimension());
       }
       if (IsPoseVertex(vertex.second)) {
         std::cout << vertex.second->Id()
@@ -323,7 +324,9 @@ class Problem {
     VecX b(VecX::Zero(size));
 
     // 遍历每个残差，并计算他们的雅克比，得到最后的 H = J^T * J
-    for (auto& edge : edges_) {
+    for (int x = 0; x < edges_.size(); x++) {
+      // for (auto &edge : edges_) {
+      const auto &edge = std::pair{x, edges_[x]};
       edge.second->ComputeResidual();
       // static int xx=0;
       // std::cout << "===========" << std::endl;
@@ -337,6 +340,11 @@ class Problem {
       // }
       // xx++;
 
+      //     std::cout << "=============" << std::endl;
+      //     std::cout << "=============" << std::endl;
+      // std::cout << "iiii" << x << std::endl;
+      //     std::cout << "=============" << std::endl;
+      //     std::cout << "=============" << std::endl;
       std::vector<MatXX> jacobians = edge.second->Jacobians();
       std::vector<std::shared_ptr<Vertex>> verticies = edge.second->Verticies();
       assert(jacobians.size() == verticies.size());
@@ -344,14 +352,18 @@ class Problem {
       for (size_t i = 0; i < verticies.size(); ++i) {
         auto v_i = verticies.at(i);
         if (v_i->IsFixed()) {
-          continue;  // Hessian 里不需要添加它的信息，也就是它的雅克比为 0
+          continue; // Hessian 里不需要添加它的信息，也就是它的雅克比为 0
         }
 
         MatXX jacobian_i = jacobians.at(i);
+        // std::cout << VAR(jacobian_i) << std::endl;
+        //   std::cout << "=============" << std::endl;
         unsigned long index_i = v_i->OrderingId();
         unsigned long dim_i = v_i->LocalDimension();
 
         MatXX JtW = jacobian_i.transpose() * edge.second->Information();
+        // std::cout << VAR(JtW) << std::endl;
+        //   std::cout << "=============" << std::endl;
 
         // 遍历这个边相关的每个顶点
         for (size_t j = i; j < verticies.size(); ++j) {
@@ -361,11 +373,15 @@ class Problem {
           }
 
           MatXX jacobian_j = jacobians[j];
+        // std::cout << VAR(jacobian_j) << std::endl;
+        //   std::cout << "=============" << std::endl;
           unsigned long index_j = v_j->OrderingId();
           unsigned long dim_j = v_j->LocalDimension();
           assert(v_j->OrderingId() != -1);
 
           MatXX hessian = JtW * jacobian_j;
+        // std::cout << VAR(hessian) << std::endl;
+        //   std::cout << "=============" << std::endl;
           // 所有的信息矩阵叠加起来
           H.block(index_i, index_j, dim_i, dim_j).noalias() += hessian;
           if (j != i) {
@@ -373,21 +389,22 @@ class Problem {
             H.block(index_j, index_i, dim_j, dim_i).noalias() +=
                 hessian.transpose();
           }
+          // std::cout << VAR(i, j) << "H\n" << H << std::endl;
+          // std::cout << "=============" << std::endl;
         }
         b.segment(index_i, dim_i).noalias() -= JtW * edge.second->Residual();
+          // std::cout << VAR(i, j) << "H\n" << H << std::endl;
       }
     }
-    std::terminate();
     Hessian_ = H;
     b_ = b;
-    // t_hessian_cost_;// gxt:时间貌似不重要在这里
-
+    // std::cout << "Hessian_\n" << (Hessian_) << std::endl;
+    // std::cout << "b_\n" << (b_) << std::endl;
+    // std::terminate();
     // gDebug(H);
-    // gDebug(Hessian_);
     // gDebug(b);
-    // gDebug(b_);
 
-    delta_x_ = VecX::Zero(size);  // initial delta_x = 0_n;
+    delta_x_ = VecX::Zero(size); // initial delta_x = 0_n;
   }
 
   /// schur求解SBA
@@ -452,9 +469,9 @@ class Problem {
         H_pp_schur_(i, i) += my_type{currentLambda_};
       }
 
-      int n = H_pp_schur_.rows() * 2;  // 迭代次数
+      int n = H_pp_schur_.rows() * 2; // 迭代次数
       delta_x_pp = PCGSolver(H_pp_schur_, b_pp_schur_,
-                             n);  // 哈哈，小规模问题，搞 pcg 花里胡哨
+                             n); // 哈哈，小规模问题，搞 pcg 花里胡哨
       delta_x_.head(reserve_size) = delta_x_pp;
       //        std::cout << delta_x_pp.transpose() << std::endl;
 
@@ -482,7 +499,7 @@ class Problem {
 
   // 有时候 update 后残差会变大，需要退回去，重来
   void RollbackStates() {
-    for (const auto& vertex : verticies_) {
+    for (const auto &vertex : verticies_) {
       ulong idx = vertex.second->OrderingId();
       ulong dim = vertex.second->LocalDimension();
       VecX delta = delta_x_.segment(idx, dim);
@@ -517,8 +534,8 @@ class Problem {
   // void LogoutVectorSize();
 
   /// 获取某个顶点连接到的边
-  std::vector<std::shared_ptr<Edge>> GetConnectedEdges(
-      std::shared_ptr<Vertex> vertex);
+  std::vector<std::shared_ptr<Edge>>
+  GetConnectedEdges(std::shared_ptr<Vertex> vertex);
 
   /// Levenberg
   /// 计算LM算法的初始Lambda
@@ -528,7 +545,7 @@ class Problem {
     currentChi_ = 0.0;
 
     // 计算出当前的总残差
-    for (const auto& edge : edges_) {
+    for (const auto &edge : edges_) {
       currentChi_ += edge.second->Chi2();
     }
 
@@ -538,7 +555,7 @@ class Problem {
     }
 
     // 1. 第一步计算停止迭代条件stopThresholdLM_
-    stopThresholdLM_ = 1e-6 * currentChi_;  // 迭代条件为 误差下降 1e-6 倍
+    stopThresholdLM_ = 1e-6 * currentChi_; // 迭代条件为 误差下降 1e-6 倍
 
     // 取出H矩阵对角线的最大值
     double maxDiagonal = 0.;
@@ -550,7 +567,7 @@ class Problem {
     }
     double tau = 1e-5;
     // 2. 根据对角线最大值计算出currentLambda_
-    currentLambda_ = tau * maxDiagonal;  // 给到u0的初值
+    currentLambda_ = tau * maxDiagonal; // 给到u0的初值
   }
 
   /// Hessian 对角线加上或者减去  Lambda
@@ -591,7 +608,7 @@ class Problem {
     // gDebugCol4(delta_x_.transpose());
     // gDebugCol4(delta_x_.transpose() *
     //            (my_type{currentLambda_} * delta_x_ + b_));
-    scale += 1e-3;  // make sure it's non-zero :)
+    scale += 1e-3; // make sure it's non-zero :)
 
     // recompute residuals after update state
     // 统计所有的残差
@@ -609,7 +626,7 @@ class Problem {
 
     // std::terminate();
 
-    if (rho > 0 && std::isfinite(tempChi)) {  // last step was good, 误差在下降
+    if (rho > 0 && std::isfinite(tempChi)) { // last step was good, 误差在下降
       double alpha = 1. - pow((2 * rho - 1), 3);
       alpha = std::min(alpha, 2.0 / 3.0);
       double scaleFactor = std::max(1.0 / 3.0, alpha);
@@ -627,14 +644,14 @@ class Problem {
 
   /// PCG 迭代线性求解器
   /// 用在SLAM舒尔补求解中
-  VecX PCGSolver(const MatXX& A, const VecX& b, int maxIter = -1) {
+  VecX PCGSolver(const MatXX &A, const VecX &b, int maxIter = -1) {
     assert(A.rows() == A.cols() &&
            "PCG solver ERROR: A is not a square matrix");
     int rows = b.rows();
     int n = maxIter < 0 ? rows : maxIter;
     VecX x(VecX::Zero(rows));
     MatXX M_inv = A.diagonal().asDiagonal().inverse();
-    VecX r0(b);  // initial r = b - A*0 = b
+    VecX r0(b); // initial r = b - A*0 = b
     VecX z0 = M_inv * r0;
     VecX p(z0);
     VecX w = A * p;
@@ -643,13 +660,18 @@ class Problem {
     VecX r1 = r0 - my_type{alpha} * w;
     int i = 0;
     double threshold = 1e-6 * static_cast<double>(r0.norm());
-//    while (static_cast<double>(r1.norm()) > threshold && i < n) {
+    //    while (static_cast<double>(r1.norm()) > threshold && i < n) {
     while (true) {
-      // NOTE: gxt: 注意这里有个大坑，直接用my_type的norm()会触发assert因为数字变小了？不懂，哈哈
-      my_type r1_norm=my_type{r1.cast<double>().norm()};
-      double r1_norm_double=static_cast<double>(r1_norm);
-      if(r1_norm_double<=threshold) {break;}
-      if(i>=n) {break;}
+      // NOTE: gxt:
+      // 注意这里有个大坑，直接用my_type的norm()会触发assert因为数字变小了？不懂，哈哈
+      my_type r1_norm = my_type{r1.cast<double>().norm()};
+      double r1_norm_double = static_cast<double>(r1_norm);
+      if (r1_norm_double <= threshold) {
+        break;
+      }
+      if (i >= n) {
+        break;
+      }
 
       i++;
       VecX z1 = M_inv * r1;
@@ -669,8 +691,8 @@ class Problem {
 
   double currentLambda_;
   double currentChi_;
-  double stopThresholdLM_;  // LM 迭代退出阈值条件
-  double ni_;               // 控制 Lambda 缩放大小
+  double stopThresholdLM_; // LM 迭代退出阈值条件
+  double ni_;              // 控制 Lambda 缩放大小
 
   ProblemType problem_type_;
 
@@ -698,7 +720,7 @@ class Problem {
   HashVertex verticies_;
 
   /// all edges
-  HashEdge edges_;  // std::unordered_map<unsigned long, std::shared_ptr<Edge>>
+  HashEdge edges_; // std::unordered_map<unsigned long, std::shared_ptr<Edge>>
 
   /// 由vertex id查询edge
   HashVertexIdToEdge vertexToEdge_;
@@ -709,9 +731,9 @@ class Problem {
   unsigned long ordering_generic_ = 0;
 
   std::map<unsigned long, std::shared_ptr<Vertex>>
-      idx_pose_vertices_;  // 以ordering排序的pose顶点
+      idx_pose_vertices_; // 以ordering排序的pose顶点
   std::map<unsigned long, std::shared_ptr<Vertex>>
-      idx_landmark_vertices_;  // 以ordering排序的landmark顶点
+      idx_landmark_vertices_; // 以ordering排序的landmark顶点
 
   HashVertex verticies_marg_;
 

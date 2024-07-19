@@ -37,14 +37,14 @@ int main() {
     tmp.parameters[4] = 0.2;
     tmp.parameters[5] = 0.3;
     tmp.parameters[6] = sqrt(1 - (0.01 + 0.04 + 0.09));
-    Matrix<float, 7, 1> delta;
+    Matrix<float, 6, 1> delta;
     delta[0] = 1;
     delta[1] = 2;
     delta[2] = 3;
     delta[3] = 0.1;
     delta[4] = 0.2;
     delta[5] = 0.1;
-    delta[6] = sqrt(1 - (0.01 + 0.04 + 0.01));
+    // delta[6] = sqrt(1 - (0.01 + 0.04 + 0.01));
     tmp.Plus(delta);
     std::cout << tmp.parameters << std::endl;
     // std::terminate();
@@ -460,6 +460,12 @@ int main() {
     e_reproject[39].v_idx1 = 0;
     e_reproject[39].v_idx2 = 2;
   }
+  {
+    for (int i = 0; i < 40; i++) {
+      e_reproject[i].information_ =
+          decltype(e_reproject[i].information_)::Identity();
+    }
+  }
 
   {
     Quaternion<float> qic;
@@ -479,8 +485,11 @@ int main() {
 
   BAProblem problem;
   problem.edge_reproject_size = e_reproject_size;
-  // problem.Solve();
-  problem.MakeHessian();
+  problem.Solve();
+  for (int i = 0; i < 20; i++) {
+    std::cout << "i=" << i << "  " << v_points[i].parameters << std::endl;
+  }
+  // problem.MakeHessian();
 
   Quaternion<float> a;
   a.x() = 0.1;

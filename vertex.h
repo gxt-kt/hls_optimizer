@@ -25,7 +25,7 @@ public:
   VertexPose() {}
   Matrix<float, 7, 1> parameters;  // xyz xyzw
 
-  void Plus(const Matrix<float, 7, 1> &delta) {
+  void Plus(const Matrix<float, 6, 1> &delta) {
     parameters(0, 0) += delta[0];
     parameters(1, 0) += delta[1];
     parameters(2, 0) += delta[2];

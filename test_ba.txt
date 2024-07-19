@@ -462,3 +462,60 @@ e_reproject[39].v_idx2=2;
 [30m[43mordering_generic_ = 38 [0m[49m
 
  ordered_landmark_vertices_ size : 20
+[32m[49miter:  0  , chi=  2.58237  , Lambda=  0.00302868 [0m[49m
+[31m[49mtempChi = 0.00712308 [0m[49m
+[31m[49mcurrentChi_ = 2.58237 [0m[49m
+[31m[49mrho = 0.996895 [0m[49m
+[34m[49mone_step_success = true [0m[49m
+[32m[49miter:  1  , chi=  0.00712308  , Lambda=  0.00100956 [0m[49m
+[31m[49mtempChi = 9.75499e-05 [0m[49m
+[31m[49mcurrentChi_ = 0.00712308 [0m[49m
+[31m[49mrho = 0.875354 [0m[49m
+[34m[49mone_step_success = true [0m[49m
+[32m[49miter:  2  , chi=  9.75499e-05  , Lambda=  0.000582444 [0m[49m
+[31m[49mtempChi = 9.71724e-05 [0m[49m
+[31m[49mcurrentChi_ = 9.75499e-05 [0m[49m
+[31m[49mrho = 0.000377341 [0m[49m
+[34m[49mone_step_success = true [0m[49m
+[32m[49miter:  3  , chi=  9.71724e-05  , Lambda=  0.000388296 [0m[49m
+[31m[49mtempChi = 9.70346e-05 [0m[49m
+[31m[49mcurrentChi_ = 9.71724e-05 [0m[49m
+[31m[49mrho = 0.000137736 [0m[49m
+[34m[49mone_step_success = true [0m[49m
+[32m[49miter:  4  , chi=  9.70346e-05  , Lambda=  0.000258864 [0m[49m
+[31m[49mtempChi = 9.69318e-05 [0m[49m
+[31m[49mcurrentChi_ = 9.70346e-05 [0m[49m
+[31m[49mrho = 0.000102806 [0m[49m
+[34m[49mone_step_success = true [0m[49m
+[35m[49m[36m[49mProblem_Solve Time: 28 ms[0m[49m[0m[49m
+
+Compare MonoBA results after opt...
+after opt, point 0 : gt 0.210139 ,noise 0.28417 ,opt 0.210089
+after opt, point 1 : gt 0.15124 ,noise 0.161173 ,opt 0.151319
+after opt, point 2 : gt 0.141016 ,noise 0.114898 ,opt 0.141199
+after opt, point 3 : gt 0.187287 ,noise 0.174241 ,opt 0.18737
+after opt, point 4 : gt 0.149463 ,noise 0.123863 ,opt 0.149544
+after opt, point 5 : gt 0.12828 ,noise 0.127425 ,opt 0.12774
+after opt, point 6 : gt 0.136993 ,noise 0.156359 ,opt 0.136856
+after opt, point 7 : gt 0.190837 ,noise 0.140633 ,opt 0.19033
+after opt, point 8 : gt 0.126399 ,noise 0.159974 ,opt 0.126146
+after opt, point 9 : gt 0.131327 ,noise 0.144373 ,opt 0.131442
+after opt, point 10 : gt 0.208942 ,noise 0.205688 ,opt 0.208847
+after opt, point 11 : gt 0.135329 ,noise 0.112831 ,opt 0.135576
+after opt, point 12 : gt 0.211459 ,noise 0.207199 ,opt 0.211048
+after opt, point 13 : gt 0.187754 ,noise 0.225542 ,opt 0.187972
+after opt, point 14 : gt 0.245532 ,noise 0.260145 ,opt 0.245096
+after opt, point 15 : gt 0.189177 ,noise 0.155015 ,opt 0.189258
+after opt, point 16 : gt 0.1811 ,noise 0.163754 ,opt 0.180701
+after opt, point 17 : gt 0.152479 ,noise 0.169557 ,opt 0.152164
+after opt, point 18 : gt 0.127129 ,noise 0.119037 ,opt 0.126951
+after opt, point 19 : gt 0.220527 ,noise 0.254659 ,opt 0.220045
+------------ pose translation ----------------
+translation after opt: 0 :-0.00294928 -0.00353276 -0.00117398 || gt: 0 0 0
+translation after opt: 1 :-1.07058  4.00354 0.870347 || gt:  -1.0718        4 0.866025
+translation after opt: 2 :-3.99569  6.92846  0.86326 || gt:       -4   6.9282 0.866025
+[0m[49ma = 0.1i + 0.2j + 0.3k + 0.927362 [0m[49m
+[0m[49ma.inverse() = -0.1i + -0.2j + -0.3k + 0.927362 [0m[49m
+[0m[49ma.toRotationMatrix() =       0.74  -0.516417   0.430945
+  0.596417        0.8 -0.0654724
+ -0.310945   0.305472        0.9 [0m[49m
