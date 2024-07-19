@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
         static_cast<double>(my_type{1.} / (Pc.z() + my_type{noise}));
     //        double inverse_depth = 1. / Pc.z();
     noise_invd.push_back(inverse_depth);
-    std::cout << "v_points[" << i << "].parameters[0]=" <<  points[i][0] <<";" << std::endl;
+    std::cout << "v_points[" << i << "].parameters[0]=" <<  inverse_depth <<";" << std::endl;
 
     // 初始化特征 vertex
     std::shared_ptr<VertexInverseDepth> verterxPoint(new VertexInverseDepth());
@@ -265,9 +265,9 @@ int main(int argc, char *argv[]) {
       printf("e_reproject[%d].v_idx2=%d;\n",e_idx,j);
       edge->SetVertex(edge_vertex);
 
+      e_idx++;
       problem.AddEdge(edge);
     }
-    e_idx++;
   }
 
   gDebug() << "begin";

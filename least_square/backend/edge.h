@@ -90,7 +90,7 @@ class Edge {
 
   void SetOrderingId(int id) { ordering_id_ = id; }
 
- protected:
+ public:
   unsigned long id_;                          // edge id
   int ordering_id_;                           // edge id in problem
   std::vector<std::string> verticies_types_;  // 各顶点类型信息，用于debug

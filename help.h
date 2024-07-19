@@ -35,9 +35,8 @@
 #define G_VARHELP(N, ...) G_VARHELPIMP(N __VA_OPT__(, ) __VA_ARGS__)
 
 // Usage: gDebug() << VAR(a,b) // stdout: a = ${a} , b = ${b}
-// #define VAR(...) G_VARHELP(COUNT_ARGS(__VA_ARGS__) __VA_OPT__(, )
-// __VA_ARGS__)
-#define VAR(...) ""
+#define VAR(...) G_VARHELP(COUNT_ARGS(__VA_ARGS__) __VA_OPT__(, ) __VA_ARGS__)
+// #define VAR(...) ""
 
 template <typename T_a, typename T_b, typename T_c, int x, int y, int z>
 void MyMatrixMultiple(const T_a A[x][y], const T_b B[y][z], T_c C[x][z]) {
@@ -97,8 +96,8 @@ void MyMatrixAddNumber(T_a A[x][y], T_b val) {
   }
 }
 
-template <typename T_a, int x> double MySquaredNorm(T_a A[x][1]) {
-  double norm = 0.0;
+template <typename T_a, int x> float MySquaredNorm(T_a A[x][1]) {
+  float norm = 0.0;
 #pragma HLS PIPELINE II = 1
   for (int i = 0; i < x; i++) {
     norm += A[i][0] * A[i][0];
@@ -106,8 +105,8 @@ template <typename T_a, int x> double MySquaredNorm(T_a A[x][1]) {
   return norm;
 }
 template <typename T_a, typename T_res, int x>
-double MyMatrixAMax(T_a A[x][x]) {
-  T_a res = std::abs(A[0][0]);
+T_res MyMatrixAMax(T_a A[x][x]) {
+  T_res res = std::abs(A[0][0]);
   for (int i = 1; i < x; i++) {
     res = std::max(res, std::abs(A[i][i]));
   }
@@ -141,30 +140,30 @@ void MyQuaternionMultiple(T_a (&A)[4][1], T_b (&B)[4][1], T_c (&C)[4][1]) {
 }
 
 
-/**
- * @brief 四元数乘以三维向量的函数 
- *
- * @tparam T_q q type 
- * @tparam T_t t type
- * @param q wxyz
- * @param v xyz
- * @param result xyz 
- */
-template <typename T_q, typename T_t>
-inline void QuaternionMultiply(const T_q q[4][1],const T_t v[3][1], T_t result[3][1]) {
-    double w = q[0][0];
-    double x = q[1][0];
-    double y = q[2][0];
-    double z = q[3][0];
-
-    double vx = v[0][0];
-    double vy = v[1][0];
-    double vz = v[2][0];
-
-    result[0][0] = w * vx + z * vy - y * vz + x * w;
-    result[1][0] = w * vy + z * vx + x * vz - y * w;
-    result[2][0] = w * vz - z * vx + y * vy - x * y;
-}
+// /**
+//  * @brief 四元数乘以三维向量的函数 
+//  *
+//  * @tparam T_q q type 
+//  * @tparam T_t t type
+//  * @param q wxyz
+//  * @param v xyz
+//  * @param result xyz 
+//  */
+// template <typename T_q, typename T_t>
+// inline void QuaternionMultiply(const T_q q[4][1],const T_t v[3][1], T_t result[3][1]) {
+//     float w = q[0][0];
+//     float x = q[1][0];
+//     float y = q[2][0];
+//     float z = q[3][0];
+//
+//     float vx = v[0][0];
+//     float vy = v[1][0];
+//     float vz = v[2][0];
+//
+//     result[0][0] = w * vx + z * vy - y * vz + x * w;
+//     result[1][0] = w * vy + z * vx + x * vz - y * w;
+//     result[2][0] = w * vz - z * vx + y * vy - x * y;
+// }
 
 template <typename T_a, int x, int y>
 void MyMatrixDebug(T_a (&A)[x][y], std::string str = "") {
@@ -185,7 +184,7 @@ template <typename T_a, int N>
 void ldl(T_a A[N][N], float L[N][N], float D[N][N]) {
   int n = N;
   int i, j, k;
-  double sum;
+  float sum;
 
   for (i = 0; i < n; i++) {
     for (j = 0; j <= i; j++) {
@@ -214,7 +213,7 @@ template <int N>
 void solve(float L[N][N], float D[N][N], float b[N][1], float x[N][1]) {
   int n = N;
   int i, j;
-  double y[N][1] = {}, sum = 0;
+  float y[N][1] = {}, sum = 0;
 
   for (i = 0; i < n; i++) {
     sum = b[i][0];
@@ -226,7 +225,7 @@ void solve(float L[N][N], float D[N][N], float b[N][1], float x[N][1]) {
 
   // MATRIXDEBUG(y);
 
-  double z[N][1] = {};
+  float z[N][1] = {};
   for (i = 0; i < n; i++) {
     z[i][0] = y[i][0] / D[i][i];
   }

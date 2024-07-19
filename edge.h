@@ -119,16 +119,20 @@ public:
 
     auto param_j = v_poses[v_idx2].parameters;
     Quaternion<float> Qj;
-    Qj[0] = param_i[6];
-    Qj[1] = param_i[3];
-    Qj[2] = param_i[4];
-    Qj[3] = param_i[5];
+    Qj[0] = param_j[6];
+    Qj[1] = param_j[3];
+    Qj[2] = param_j[4];
+    Qj[3] = param_j[5];
     Matrix<float, 3, 1> Pj = param_j.head<3>();
 
     auto pts_camera_i = pts_i_ / inv_dep_i;
     auto pts_imu_i = qic * pts_camera_i + tic;
     auto pts_w = Qi * pts_imu_i + Pi;
     auto pts_imu_j = Qj.inverse() * (pts_w - Pj);
+    // std::cout << VAR(Qj) << std::endl;
+    // std::cout << VAR(Qj.inverse()) << std::endl;
+    // std::cout << VAR(pts_w-Pj) << std::endl;
+    // std::cout << VAR(pts_imu_j) << std::endl;
     auto pts_camera_j = qic.inverse() * (pts_imu_j - tic);
 
     float dep_j = pts_camera_j.z();
@@ -153,10 +157,10 @@ public:
 
     auto param_j = v_poses[v_idx2].parameters;
     Quaternion<float> Qj;
-    Qj[0] = param_i[6];
-    Qj[1] = param_i[3];
-    Qj[2] = param_i[4];
-    Qj[3] = param_i[5];
+    Qj[0] = param_j[6];
+    Qj[1] = param_j[3];
+    Qj[2] = param_j[4];
+    Qj[3] = param_j[5];
     Matrix<float, 3, 1> Pj = param_j.head<3>();
 
     auto pts_camera_i = pts_i_ / inv_dep_i;
@@ -187,9 +191,13 @@ public:
     //
     Matrix<float, 2, 6> jacobian_pose_i;
     Matrix<float, 3, 6> jaco_i;
-    jaco_i.SetleftCols(ric.transpose() * Rj.transpose());
+    jaco_i.SetleftCols<3>(ric.transpose() * Rj.transpose());
     jaco_i.SetrightCols<3>(ric.transpose() * Rj.transpose() * Ri * (-1) *
                            pts_imu_i_double.hat());
+    // std::cout << VAR(pts_imu_i_double) << std::endl;
+    // std::cout << VAR(pts_imu_i_double.hat()) << std::endl;
+    // std::cout << VAR(ric.transpose() * Rj.transpose() * Ri * (-1) * pts_imu_i_double.hat()) << std::endl;
+    // std::cout << VAR(jaco_i) << std::endl;
     jacobian_pose_i.SetleftCols<6>(reduce * jaco_i);
     //
     Matrix<float, 2, 6> jacobian_pose_j;

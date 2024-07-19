@@ -31,6 +31,10 @@ void EdgeReprojection::ComputeResidual() {
   Vec3 pts_imu_i = qic * pts_camera_i + tic;
   Vec3 pts_w = Qi * pts_imu_i + Pi;
   Vec3 pts_imu_j = Qj.inverse() * (pts_w - Pj);
+    // gDebugWarn() << VAR(Qj);
+    // gDebugWarn() << VAR(Qj.inverse());
+    // gDebugWarn() << VAR(pts_w - Pj);
+    // gDebugWarn() << VAR(pts_imu_j);
   Vec3 pts_camera_j = qic.inverse() * (pts_imu_j - tic);
 
   my_type dep_j = pts_camera_j.z();
@@ -90,6 +94,10 @@ void EdgeReprojection::ComputeJacobians() {
   jaco_i.leftCols<3>() = ric.transpose() * Rj.transpose();
   jaco_i.rightCols<3>() = ric.transpose() * Rj.transpose() * Ri *
                           -Sophus::SO3d::hat(pts_imu_i_double).cast<my_type>();
+  // std::cout << VAR(pts_imu_i_double) << std::endl;
+  // std::cout << VAR(Sophus::SO3d::hat(pts_imu_i_double)) << std::endl;
+  // std::cout << VAR(ric.transpose() * Rj.transpose() * Ri * -Sophus::SO3d::hat(pts_imu_i_double).cast<my_type>()) << std::endl;
+  // std::cout << VAR(jaco_i) << std::endl;
   jacobian_pose_i.leftCols<6>() = reduce * jaco_i;
 
   Eigen::Matrix<my_type, 2, 6> jacobian_pose_j;

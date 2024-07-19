@@ -49,6 +49,12 @@ public:
     }
     return res;
   }
+  template <typename U> void AddDiagonal(U value) {
+    static_assert(X == Y);
+    for (int i = 0; i < X; i++) {
+      (*this)(i, i) += value;
+    }
+  }
   template <typename U> Matrix<T, X, Y> operator/(U value) {
     Matrix<T, X, Y> res;
     for (int i = 0; i < X; i++) {
@@ -69,20 +75,31 @@ public:
     static_assert(N >= 0 && Y >= N);
     for (int i = 0; i < X; i++) {
       for (int j = Y - N; j < Y; j++) {
-        (*this)(i, j) = matrix(i, j);
+        (*this)(i, j) = matrix(i, j - (Y - N));
       }
     }
+  }
+  T MaxDiagonal() {
+    static_assert(X == Y);
+    auto res = MyMatrixAMax<T, T, X>(this->data_);
+    return res;
   }
 
   Matrix<T, 3, 3> hat() {
     static_assert(X == 3 && Y == 1);
-    Matrix<T, 3, 1> &omega = *this;
     Matrix<T, 3, 3> Omega;
-    // clang-format off
-      Omega << 0.0, -omega(2), omega(1),
-               omega(2), 0.0, -omega(0),
-              -omega(1), omega(0), 0.0;
-    // clang-format on
+    Omega(0, 0) = 0.0;
+    Omega(0, 1) = -(*this)(2);
+    Omega(0, 2) = (*this)(1);
+    Omega(1, 0) = (*this)(2);
+    Omega(1, 1) = 0.0;
+    Omega(1, 2) = -(*this)(0);
+    Omega(2, 0) = -(*this)(1);
+    Omega(2, 1) = (*this)(0);
+    Omega(2, 2) = 0.0;
+    // Omega << 0.0, -omega(2), omega(1),
+    //          omega(2), 0.0, -omega(0),
+    //         -omega(1), omega(0), 0.0;
     return Omega;
   }
   // // 一定注意相加和相减都是原地操作
@@ -142,7 +159,7 @@ public:
     static_assert(X == 3 && Y == 1, "only X==3&&Y==1 canuse it");
     return (*this)[2];
   }
-  template <size_t N> Matrix<type, N, 1> &head() {
+  template <size_t N> Matrix<type, N, 1> head() {
     static_assert(Y == 1 && N <= X && N > 0, "must Y == 1 && N<=X && N>0");
     Matrix<type, N, 1> res;
     for (int i = 0; i < N; i++) {
@@ -162,9 +179,10 @@ template <typename T_q> class Quaternion : public Matrix<T_q, 4, 1> {
 public:
   template <typename T_t>
   Matrix<T_t, 3, 1> operator*(const Matrix<T_t, 3, 1> &t) {
-    Matrix<T_t, 3, 1> res;
-    QuaternionMultiply<T_q, T_t>(this->data_, t.data_, res.data_);
-    return res;
+    // Matrix<T_t, 3, 1> res;
+    // QuaternionMultiply<T_q, T_t>(this->data_, t.data_, res.data_);
+    // return res;
+    return toRotationMatrix() * t;
   }
   Matrix<T_q, 3, 3> toRotationMatrix() {
     T_q q0 = w();
@@ -188,18 +206,23 @@ public:
     return R;
   }
   Quaternion<T_q> inverse() {
-    T_q norm = x() * x() + y() * y() + z() * z() + w() * w();
-    if (norm < std::numeric_limits<T_q>::epsilon()) {
-      // 四元数范数接近 0，无法计算逆
-      return *this;
-    }
+    //    T_q norm = x() * x() + y() * y() + z() * z() + w() * w();
+    //    if (norm < std::numeric_limits<T_q>::epsilon()) {
+    //      // 四元数范数接近 0，无法计算逆
+    //      return *this;
+    //    }
 
-    T_q inv_norm = static_cast<T_q>(1.0) / norm;
+    //    T_q inv_norm = static_cast<T_q>(1.0) / norm;
+    //    Quaternion<T_q> inv;
+    //    inv.x() = -x() * inv_norm;
+    //    inv.y() = -y() * inv_norm;
+    //    inv.z() = -z() * inv_norm;
+    //    inv.w() = w() * inv_norm;
     Quaternion<T_q> inv;
-    inv.x() = -x() * inv_norm;
-    inv.y() = -y() * inv_norm;
-    inv.z() = -z() * inv_norm;
-    inv.w() = w() * inv_norm;
+    inv.x() = -x();
+    inv.y() = -y();
+    inv.z() = -z();
+    inv.w() = w();
     return inv;
   }
   // eigen3中也是按照wxyz存储的

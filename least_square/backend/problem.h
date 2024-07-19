@@ -4,6 +4,7 @@
 
 // 主要用在函数SelfAdjointEigenSolver
 #include <Eigen/Dense>
+#include <exception>
 
 #include "edge.h"
 #include "vertex.h"
@@ -324,7 +325,17 @@ class Problem {
     // 遍历每个残差，并计算他们的雅克比，得到最后的 H = J^T * J
     for (auto& edge : edges_) {
       edge.second->ComputeResidual();
+      // static int xx=0;
+      // std::cout << "===========" << std::endl;
+      // std::cout << "residual i=" << xx << " "
+      //           << edge.second->residual_ << std::endl;
       edge.second->ComputeJacobians();
+      // const auto& jaco=edge.second->jacobians_;
+      // for(const auto& jacojaco:jaco) {
+      // std::cout << "jaco i=" << xx << " "
+      //           << jacojaco << std::endl;
+      // }
+      // xx++;
 
       std::vector<MatXX> jacobians = edge.second->Jacobians();
       std::vector<std::shared_ptr<Vertex>> verticies = edge.second->Verticies();
@@ -342,6 +353,7 @@ class Problem {
 
         MatXX JtW = jacobian_i.transpose() * edge.second->Information();
 
+        // 遍历这个边相关的每个顶点
         for (size_t j = i; j < verticies.size(); ++j) {
           auto v_j = verticies.at(j);
           if (v_j->IsFixed()) {
@@ -365,6 +377,7 @@ class Problem {
         b.segment(index_i, dim_i).noalias() -= JtW * edge.second->Residual();
       }
     }
+    std::terminate();
     Hessian_ = H;
     b_ = b;
     // t_hessian_cost_;// gxt:时间貌似不重要在这里

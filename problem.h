@@ -221,6 +221,8 @@ public:
   float current_chi2_;
 };
 
+
+const int dimen=3*6+1*20;
 class BAProblem {
 public:
   // BAProblem() { }
@@ -259,7 +261,15 @@ public:
       if (i >= edge_reproject_size)
         continue;
       e_reproject[i].ComputeResidual();
+      // std::cout << "residual i=" << i << " "
+      //           << e_reproject[i].residual_.transpose() << std::endl;
       e_reproject[i].ComputeJacobians();
+      // std::cout << "jacobians0 i=" << i << " " << e_reproject[i].jacobians_0
+      //           << std::endl;
+      // std::cout << "jacobians1 i=" << i << " " << e_reproject[i].jacobians_1
+      //           << std::endl;
+      // std::cout << "jacobians2 i=" << i << " " << e_reproject[i].jacobians_2
+      //           << std::endl;
 
       // Matrix<float, 3, 1> JtW;
       //
@@ -285,10 +295,10 @@ public:
     // 输出是 delta_x_
     // delta_x_ = Hessian_.inverse() * b_;
     //
-    LdltSolve<float, float, float, 3>(hessian_.data_, delta_x_.data_, b_.data_,
-                                      false);
+    // LdltSolve<float, float, float, 3>(hessian_.data_, delta_x_.data_, b_.data_,
+    //                                   false);
     // float h_dx[3][1] = {};
-    Matrix<float, 3, 1> h_dx = hessian_ * delta_x_;
+    auto h_dx = hessian_ * delta_x_;
     // MyMatrixMultiple<float, float, float, 3, 3, 1>(hessian_.data_,
     //                                                   delta_x_.data_, h_dx);
     // MATRIXDEBUG(delta_x_);
@@ -303,11 +313,13 @@ public:
 
   /// Hessian 对角线加上或者减去  Lambda
   void AddLambdatoHessianLM() {
-    MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_, currentLambda_);
+    // MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_, currentLambda_);
+    hessian_.AddDiagonal(currentLambda_);
   }
   void RemoveLambdatoHessianLM() {
-    MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_,
-                                                -currentLambda_);
+    // MyMatrixAddNumber<float, float, 3, 3, 0, 3>(hessian_.data_,
+    //                                             -currentLambda_);
+    hessian_.AddDiagonal(-currentLambda_);
   }
   void Solve(int it_cnts = 10) {
     MakeHessian();
@@ -366,12 +378,8 @@ public:
     float scale = 0;
 
     Matrix<float, 1, 1> dot;
-    Matrix<float, 1, 3> delta_x_transpose;
 
-    MyMatrixTranspose<float, float, 3, 1>(delta_x_.data_,
-                                          delta_x_transpose.data_);
-
-    Matrix<float, 3, 1> delta_x_lambda_ = delta_x_ * currentLambda_;
+    auto delta_x_lambda_ = delta_x_ * currentLambda_;
     delta_x_lambda_ + b_;
     dot = delta_x_.transpose() * delta_x_lambda_;
 
@@ -422,18 +430,19 @@ public:
 
     // 取出H矩阵对角线的最大值
     float maxDiagonal = 0.;
-    maxDiagonal = MyMatrixAMax<float, float, 3>(hessian_.data_);
+    maxDiagonal = hessian_.MaxDiagonal();
     float tau = 1e-5;
     // 2. 根据对角线最大值计算出currentLambda_
     currentLambda_ = tau * maxDiagonal; // 给到u0的初值
   }
-  Matrix<float, 3, 3> hessian_;
-  Matrix<float, 3, 1> b_;
+  // 维度和顶点个数有关 3*6+1*20
+  Matrix<float, dimen, dimen> hessian_;
+  Matrix<float, dimen, 1> b_;
   float chi2_;
-  Matrix<float, 3, 1> delta_x_;
+  Matrix<float, dimen, 1> delta_x_;
   // 最大支持200条边
   static const int max_edge_reproject_size = 100;
-  int edge_reproject_size = 20;
+  int edge_reproject_size = 0;
   float stopThresholdLM_ = 0;
   float current_chi2_;
 };
